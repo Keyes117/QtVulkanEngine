@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+    </Filter>
+    <Filter Include="Translation Files">
+      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
+      <Extensions>ts</Extensions>
+    </Filter>
+    <Filter Include="shader">
+      <UniqueIdentifier>{758c7bf5-a81b-4434-a373-f28c870204f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{1212c1da-897d-4a7e-8597-f78d087fd031}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="QtVulkan.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+    <QtUic Include="QtVulkan.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Device.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Pipeline.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="MyVulkanWindow.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="MyVulkanApp.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SwapChain.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Model.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="simple_shader.vert">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="simple_shader.frag">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="compile.bat">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="simple_shader.frag.spv">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="simple_shader.vert.spv">
+      <Filter>shader</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Device.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Pipeline.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="MyVulkanApp.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="SwapChain.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="MyVulkanWindow.h">
+      <Filter>src</Filter>
+    </QtMoc>
+  </ItemGroup>
+</Project>

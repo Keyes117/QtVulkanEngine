@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+.vs/
+bin/
+obj/
+
+*vcxproj.user
