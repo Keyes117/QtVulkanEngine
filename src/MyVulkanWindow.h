@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QWindow>
 #include <qevent.h>
+#include <QWindow>
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <Windows.h>
@@ -25,11 +25,12 @@ public:
     bool isWidthResized() { return m_framebufferResized; }
     void resetWindowResizedFlag() { m_framebufferResized = false; }
 
+
+
     int width() { return m_width; }
     int height() { return m_height; }
 protected:
     void resizeEvent(QResizeEvent* event) override;
-
 
 
 private:

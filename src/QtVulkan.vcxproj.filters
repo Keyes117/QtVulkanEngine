@@ -53,6 +53,10 @@
     <ClCompile Include="Object.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -76,6 +80,10 @@
     <ClInclude Include="const.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MyVulkanWindow.h">
