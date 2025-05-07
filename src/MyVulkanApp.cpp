@@ -23,24 +23,34 @@ void MyVulkanApp::run()
 
     m_swapChain = std::make_unique<SwapChain>(m_device, m_window.getExtent());
 
-    loadModels();
+    loadObjects();
     createPipelineLayout();
     createPipeline();
     createCommandBuffers();
-    for (int i = 0; i < m_commandBuffers.size(); i++)
-    {
-        recordCommandBuffer(i);
-    }
+
     drawFrame();
 
     QTimer* t = new QTimer(&m_window);
     t->setTimerType(Qt::PreciseTimer);
-    QObject::connect(t, &QTimer::timeout, [this]() { drawFrame(); });
+
+    QObject::connect(&m_window, &QWindow::close, [this]() {
+        m_windowClosed = true;
+        });
+
+    QObject::connect(t, &QTimer::timeout, [this]() {
+        if (m_windowClosed)
+            return true;
+        drawFrame();
+        });
+    QObject::connect(&m_window, &QWindow::close, t, [t]() {
+        t->setInterval(0);  // ÔÝÍ£¶¨Ê±Æ÷
+        t->disconnect();
+        });
     t->start(16);
     return;
 }
 
-void MyVulkanApp::loadModels()
+void MyVulkanApp::loadObjects()
 {
     std::vector<Model::Vertex> vertices
     {
@@ -49,8 +59,22 @@ void MyVulkanApp::loadModels()
         {{-0.5f,0.5f},{0.0f,0.0f,1.0f}}
     };
 
-    m_model = std::make_unique<Model>(m_device, vertices);
+    auto model = std::make_shared<Model>(m_device, vertices);
+
+    for (int i = 0; i < 10; i++)
+    {
+        auto triangle = Object::createObject();
+        triangle.m_model = model;
+        triangle.m_color = { .1f, .8f , .1f };
+        triangle.m_transform2d.translation.setX(.2f);
+        triangle.m_transform2d.scale = { .2f ,.5f };
+        triangle.m_transform2d.rotation = .25f * M_PI;
+
+        m_objects.push_back(std::move(triangle));
+    }
+
 }
+
 
 void MyVulkanApp::createPipelineLayout()
 {
@@ -60,12 +84,11 @@ void MyVulkanApp::createPipelineLayout()
     pushConstantRange.size = sizeof(SimplePushConstantData);
 
 
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts = nullptr;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
     if (vkCreatePipelineLayout(m_device.device(), &pipelineLayoutInfo,
         nullptr, &m_pipelineLayout) != VK_SUCCESS)
@@ -79,10 +102,8 @@ void MyVulkanApp::createPipeline()
     assert(m_swapChain != nullptr && "Cannot create pipeline before swap chain");
     assert(m_pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout");
 
-
     PipelineConfigInfo pipelineConfigInfo{};
     Pipeline::defaultPipelineConfigInfo(pipelineConfigInfo);
-
 
     pipelineConfigInfo.renderPass = m_swapChain->getRenderPass();
     pipelineConfigInfo.pipelineLayout = m_pipelineLayout;
@@ -118,7 +139,7 @@ void MyVulkanApp::freeCommandBuffers()
     vkFreeCommandBuffers(
         m_device.device(),
         m_device.getCommandPool(),
-        static_cast<float>(m_commandBuffers.size()),
+        static_cast<uint32_t>(m_commandBuffers.size()),
         m_commandBuffers.data()
     );
     m_commandBuffers.clear();
@@ -146,14 +167,52 @@ void MyVulkanApp::drawFrame()
 
     recordCommandBuffer(imageIndex);
     result = m_swapChain->submitCommandBuffers(&m_commandBuffers[imageIndex], &imageIndex);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result != VK_SUBOPTIMAL_KHR
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR
         || m_window.isWidthResized())
     {
+        if (m_windowClosed)
+            return;
         recreateSwapChain();
+        return;
     }
     else if (result != VK_SUCCESS)
     {
         throw std::runtime_error("failed to present swap chain image!");
+    }
+}
+
+void MyVulkanApp::renderObjects(VkCommandBuffer commandBuffer)
+{
+    int i = 0;
+    for (auto& obj : m_objects)
+    {
+        i += 1;
+
+        float angle = std::fmod(obj.m_transform2d.rotation + 0.01f * i, 2.f * M_PI);
+        if (angle < 0) {
+            angle += 2 * M_PI; // Ensure non-negative
+        }
+        obj.m_transform2d.rotation = angle;
+    }
+
+    m_pipeline->bind(commandBuffer);
+
+    for (auto& obj : m_objects)
+    {
+
+        SimplePushConstantData push{};
+        push.offset = obj.m_transform2d.translation;
+        push.color = obj.m_color;
+        push.transform = obj.m_transform2d.mat2f();
+        vkCmdPushConstants(
+            commandBuffer,
+            m_pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(SimplePushConstantData),
+            &push);
+        obj.m_model->bind(commandBuffer);
+        obj.m_model->draw(commandBuffer);
     }
 }
 
@@ -198,9 +257,6 @@ void MyVulkanApp::recreateSwapChain()
 
 void MyVulkanApp::recordCommandBuffer(int imageIndex)
 {
-    static int frame = 0;
-    frame = (frame + 1) % 1000;
-
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -237,26 +293,7 @@ void MyVulkanApp::recordCommandBuffer(int imageIndex)
     vkCmdSetViewport(m_commandBuffers[imageIndex], 0, 1, &viewport);
     vkCmdSetScissor(m_commandBuffers[imageIndex], 0, 1, &sicssor);
 
-    m_pipeline->bind(m_commandBuffers[imageIndex]);
-    m_model->bind(m_commandBuffers[imageIndex]);
-
-    for (int j = 0; j < 4; j++)
-    {
-        SimplePushConstantData push{};
-        push.offset = { -0.5f + frame * 0.002f,-0.4f + j * 0.25f };
-        push.color = { 0.0f, 0.0f, 0.2f + 0.2f * j };
-
-        vkCmdPushConstants(
-            m_commandBuffers[imageIndex],
-            m_pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(SimplePushConstantData),
-            &push);
-
-        m_model->draw(m_commandBuffers[imageIndex]);
-    }
-
+    renderObjects(m_commandBuffers[imageIndex]);
 
 
     vkCmdEndRenderPass(m_commandBuffers[imageIndex]);

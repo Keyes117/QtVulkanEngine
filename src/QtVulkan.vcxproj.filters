@@ -50,6 +50,9 @@
     <ClCompile Include="Model.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -65,6 +68,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="Model.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="const.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
