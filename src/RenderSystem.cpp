@@ -56,16 +56,16 @@ void RenderSystem::createPipeline(VkRenderPass renderPass)
 
 void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects)
 {
-    int i = 0;
-    for (auto& obj : objects)
-    {
-        i += 1;
-        float angle = std::fmod(obj.m_transform2d.rotation + 0.01f * i, 2.f * M_PI);
-        if (angle < 0) {
-            angle += 2 * M_PI; // Ensure non-negative
-        }
-        obj.m_transform2d.rotation = angle;
-    }
+    //int i = 0;
+    //for (auto& obj : objects)
+    //{
+    //    i += 1;
+    //    float angle = std::fmod(obj.m_transform2d.rotation + 0.01f * i, 2.f * M_PI);
+    //    if (angle < 0) {
+    //        angle += 2 * M_PI; // Ensure non-negative
+    //    }
+    //    obj.m_transform2d.rotation = angle;
+    //}
 
     m_pipeline->bind(commandBuffer);
 

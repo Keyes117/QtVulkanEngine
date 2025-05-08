@@ -40,7 +40,7 @@ public:
 signals:
     void updateRequested();
 
-private slots:
+public slots:
     void setDrawNone() { m_drawMode = DrawMode::None; }
     void setDrawPoint() { m_drawMode = DrawMode::Point; }
     void setDrawLine() { m_drawMode = DrawMode::Line; }

@@ -17,8 +17,14 @@ public:
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
     };
 
+    struct Builder
+    {
+        std::vector<Vertex> vertices{};
+        std::vector<uint32_t> indices{};
+    };
 
-    Model(Device& device, const std::vector<Vertex>& vertices);
+
+    Model(Device& device, const Model::Builder& builder);
     ~Model();
 
     void bind(VkCommandBuffer commandBuffer);
@@ -31,11 +37,18 @@ public:
     Model& operator=(Model&&) = delete;
 private:
     void createVertexBuffers(const std::vector<Vertex>& vertices);
+    void createIndexBuffers(const std::vector<uint32_t>& indices);
 
 private:
     Device& m_device;
     VkBuffer        m_vertexBuffer;
     VkDeviceMemory  m_vertexBufferMemory;
     uint32_t        m_vertexCount;
+
+    bool            m_hasIndexBuffer;
+    VkBuffer        m_indexBuffer;
+    VkDeviceMemory  m_indexBufferMemory;
+    uint32_t        m_indexCount;
 };
+
 
