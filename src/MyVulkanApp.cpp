@@ -27,19 +27,19 @@ void MyVulkanApp::run()
 
     loadObjects();
 
-    QObject::connect(&m_window, &MyVulkanWindow::updateRequested, [this]() {
-
-        if (!m_window.isExposed())
-            return;
-
-        if (auto commandBuffer = m_renderer.beginFrame())
+    QObject::connect(&m_window, &MyVulkanWindow::updateRequested, [this]()
         {
-            m_renderer.beginSwapChainRenderPass(commandBuffer);
-            this->getRenderSystem()->renderObjects(commandBuffer, m_objects);
-            m_renderer.endSwapChainRenderPass(commandBuffer);
-            m_renderer.endFrame();
-        }
-        m_window.requestUpdate();
+            if (!m_window.isExposed())
+                return;
+
+            if (auto commandBuffer = m_renderer.beginFrame())
+            {
+                m_renderer.beginSwapChainRenderPass(commandBuffer);
+                this->getRenderSystem()->renderObjects(commandBuffer, m_objects);
+                m_renderer.endSwapChainRenderPass(commandBuffer);
+                m_renderer.endFrame();
+            }
+            m_window.requestUpdate();
         });
     return;
 }

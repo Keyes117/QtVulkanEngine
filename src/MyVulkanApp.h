@@ -31,7 +31,6 @@ public:
     void run();
 
     RenderSystem* getRenderSystem() { return &m_renderSystem; }
-    //QTimer* getRenderTimer() { return m_renderTimer.get(); }
 private:
     void loadObjects();
 
@@ -44,7 +43,6 @@ private:
     Device                          m_device;
     Renderer                        m_renderer;
     RenderSystem                    m_renderSystem;
-    //std::unique_ptr<QTimer>         m_renderTimer;
     std::vector<Object>             m_objects;
 
 

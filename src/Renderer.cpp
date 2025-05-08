@@ -179,7 +179,7 @@ void Renderer::recreateSwapChain()
             spOldSwapchain
         );
 
-        if (!spOldSwapchain->compareSwapFormats(*m_swapChain.get()))
+        if (!spOldSwapchain->compareSwapFormats(*m_swapChain))
         {
             throw std::runtime_error("Swap chain image(or depth) formats has changed");
         }
