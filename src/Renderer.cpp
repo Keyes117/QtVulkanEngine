@@ -156,8 +156,6 @@ void Renderer::freeCommandBuffers()
 
 void Renderer::recreateSwapChain()
 {
-
-
     auto extent = m_window.getExtent();
     while (extent.width == 0 || extent.height == 0) {
         QCoreApplication::processEvents();

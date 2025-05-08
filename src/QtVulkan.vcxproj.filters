@@ -24,9 +24,6 @@
     <QtRcc Include="QtVulkan.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
-    <QtUic Include="QtVulkan.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Device.cpp">
@@ -56,7 +53,12 @@
     <ClCompile Include="Renderer.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="RenderSystem.cpp" />
+    <ClCompile Include="RenderSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="MyVulkanWidget.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -83,10 +85,15 @@
     <ClInclude Include="Renderer.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="RenderSystem.h" />
+    <ClInclude Include="RenderSystem.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MyVulkanWindow.h">
+      <Filter>src</Filter>
+    </QtMoc>
+    <QtMoc Include="MyVulkanWidget.h">
       <Filter>src</Filter>
     </QtMoc>
   </ItemGroup>
@@ -97,5 +104,10 @@
     <None Include="..\shader\simple_shader.vert">
       <Filter>shader</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="MyVulkanWidget.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
 </Project>

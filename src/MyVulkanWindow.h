@@ -9,12 +9,20 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
 
+enum class DrawMode
+{
+    None,
+    Point,
+    Line,
+    Polygon
+};
+
 class MyVulkanWindow : public QWindow
 {
     Q_OBJECT
 public:
     explicit MyVulkanWindow(QWindow* parent = nullptr);
-    ~MyVulkanWindow() = default;
+    ~MyVulkanWindow();
 
     void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 
@@ -26,17 +34,29 @@ public:
     void resetWindowResizedFlag() { m_framebufferResized = false; }
 
 
-
     int width() { return m_width; }
     int height() { return m_height; }
-protected:
-    void resizeEvent(QResizeEvent* event) override;
 
+signals:
+    void updateRequested();
+
+private slots:
+    void setDrawNone() { m_drawMode = DrawMode::None; }
+    void setDrawPoint() { m_drawMode = DrawMode::Point; }
+    void setDrawLine() { m_drawMode = DrawMode::Line; }
+    void setDrawPolygon() { m_drawMode = DrawMode::Polygon; }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void exposeEvent(QExposeEvent* event) override;
+    bool event(QEvent* event) override;
 
 private:
     int m_width{ 800 };
     int m_height{ 600 };
 
+    DrawMode m_drawMode{ DrawMode::None };
     bool m_framebufferResized{ false };
 
 

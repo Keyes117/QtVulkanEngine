@@ -6,8 +6,9 @@
 
 
 
-MyVulkanApp::MyVulkanApp()
-    :m_device(m_window),
+MyVulkanApp::MyVulkanApp() :
+    m_window(m_widget.getVulkanWindowHandle()),
+    m_device(m_window),
     m_renderer(m_window, m_device),
     m_renderSystem(m_device, m_renderer.getSwapChainRenderPass())
 {
@@ -21,15 +22,16 @@ MyVulkanApp::~MyVulkanApp()
 void MyVulkanApp::run()
 {
 
-    m_window.resize(800, 600);
-    m_window.show();
+    m_widget.resize(800, 600);
+    m_widget.show();
 
     loadObjects();
 
-    QTimer* t = new QTimer(&m_window);
-    t->setTimerType(Qt::PreciseTimer);
+    QObject::connect(&m_window, &MyVulkanWindow::updateRequested, [this]() {
 
-    QObject::connect(t, &QTimer::timeout, [this]() {
+        if (!m_window.isExposed())
+            return;
+
         if (auto commandBuffer = m_renderer.beginFrame())
         {
             m_renderer.beginSwapChainRenderPass(commandBuffer);
@@ -37,13 +39,12 @@ void MyVulkanApp::run()
             m_renderer.endSwapChainRenderPass(commandBuffer);
             m_renderer.endFrame();
         }
+        m_window.requestUpdate();
         });
-
-
-    t->start(16);
     return;
 }
 
+//TODO：将渲染对象的收集 变为窗口控制
 void MyVulkanApp::loadObjects()
 {
     std::vector<Model::Vertex> vertices
