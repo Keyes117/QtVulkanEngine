@@ -4,7 +4,10 @@
 #include <QApplication>
 #include <qtimer.h>
 
-
+float degressToRadians(float degress)
+{
+    return degress * static_cast<float>(M_PI) / 180.0f;
+}
 
 MyVulkanApp::MyVulkanApp() :
     m_window(m_widget.getVulkanWindowHandle()),
@@ -27,15 +30,23 @@ void MyVulkanApp::run()
 
     loadObjects();
 
+    //TODO: 设置Camera可以通过鼠标或者方向键进行调整
+    m_camera.setViewDirection(QVector3D(1.f, 0.f, 5.f), QVector3D(0.f, 0.f, 1.f));
+
+
     QObject::connect(&m_window, &MyVulkanWindow::updateRequested, [this]()
         {
             if (!m_window.isExposed())
                 return;
 
+            float aspect = m_renderer.getAspectRatio();
+            m_camera.setOrthographciProjection(-aspect, aspect, -1, 1, -1.f, 100.f);
+            //m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1, 10.f);
+
             if (auto commandBuffer = m_renderer.beginFrame())
             {
                 m_renderer.beginSwapChainRenderPass(commandBuffer);
-                this->getRenderSystem()->renderObjects(commandBuffer, m_objects);
+                this->getRenderSystem()->renderObjects(commandBuffer, m_objects, m_camera);
                 m_renderer.endSwapChainRenderPass(commandBuffer);
                 m_renderer.endFrame();
             }
@@ -44,30 +55,28 @@ void MyVulkanApp::run()
     return;
 }
 
-//TODO：将渲染对象的收集 变为窗口控制
+//TODO: 设置可以手绘物体
 void MyVulkanApp::loadObjects()
 {
     Model::Builder modelBuidler;
     modelBuidler.vertices = std::vector<Model::Vertex>{
-        {{0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, // Triangle 1, vertex 1
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  // Triangle 1, vertex 2
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}, // Triangle 1, vertex 3
-        {{-0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}}, // Triangle 2, vertex 1 (shared with triangle 1)
+        {{0.0f, -0.5f,  0.f}, {1.0f, 0.0f, 0.0f}}, // Triangle 1, vertex 1
+        {{0.5f, 0.5f,   0.f}, {0.0f, 1.0f, 0.0f}},  // Triangle 1, vertex 2
+        {{-0.5f, 0.5f,  0.f}, {0.0f, 0.0f, 1.0f}}, // Triangle 1, vertex 3
+        //{{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f}}, // Triangle 2, vertex 1 (shared with triangle 1)
     };
 
 
-    modelBuidler.indices = { 0,1,2,0,3,2 };
+    modelBuidler.indices = { 0,1,2 };
     auto model = std::make_shared<Model>(m_device, modelBuidler);
 
 
     auto triangle = Object::createObject();
     triangle.m_model = model;
     triangle.m_color = { .1f, .8f , .1f };
-    triangle.m_transform2d.translation.setX(.2f);
-    //triangle.m_transform2d.scale = { .2f ,.5f };
-    //triangle.m_transform2d.rotation = .25f * M_PI;
-
-
+    //triangle.m_transform.translation = { .2f, .0f ,.0f };
+    //triangle.m_transform.scale = { .2f ,.5f ,.0f };
+    //triangle.m_transform.rotation = { .0f,.0f,.25f * M_PI };
 
     m_objects.push_back(std::move(triangle));
 

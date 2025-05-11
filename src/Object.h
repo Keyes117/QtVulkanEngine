@@ -1,24 +1,25 @@
 #pragma once
 #include "Model.h"
 
-#include <memory>
 #include "const.h"
-
-struct Transform2dComponent
+#include <memory>
+#include <qmatrix4x4.h>
+struct TransformComponent
 {
-    QVector2D translation{}; // position offset
-    QVector2D scale{ 1.f,1.f };
-    float rotation;
-    Mat2F mat2f() {
+    QVector3D translation{}; // position offset
+    QVector3D scale{ 1.f,1.f,1.f };
+    QVector3D rotation;
 
-        const float s = sin(rotation);
-        const float c = cos(rotation);
-        const float rotationMartixData[4] = { c, s, -s, c };
-        Mat2F rotationMartix(rotationMartixData);
+    QMatrix4x4 mat4f() {
+        QMatrix4x4 transform;
+        transform.translate(translation);
 
-        const float data[4] = { scale.x(), .0f, .0f, scale.y() };
-        Mat2F scaleMat(data);
-        return rotationMartix * scaleMat;
+        transform.rotate(rotation.x(), { 1.f,0.f,0.f });
+        transform.rotate(rotation.y(), { 0.f,1.f,0.f });
+        transform.rotate(rotation.z(), { 0.f,0.f,1.f });
+
+        transform.scale(scale);
+        return transform;
     }
 };
 
@@ -42,7 +43,7 @@ public:
 
     std::shared_ptr<Model>  m_model;
     QVector3D   m_color{};
-    Transform2dComponent m_transform2d;
+    TransformComponent m_transform;
 private:
     Object(id_t objID) :m_id(objID) {}
 

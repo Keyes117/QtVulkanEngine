@@ -54,28 +54,29 @@ void RenderSystem::createPipeline(VkRenderPass renderPass)
     );
 }
 
-void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects)
+void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects, const Camera& camera)
 {
-    //int i = 0;
-    //for (auto& obj : objects)
-    //{
-    //    i += 1;
-    //    float angle = std::fmod(obj.m_transform2d.rotation + 0.01f * i, 2.f * M_PI);
-    //    if (angle < 0) {
-    //        angle += 2 * M_PI; // Ensure non-negative
-    //    }
-    //    obj.m_transform2d.rotation = angle;
-    //}
+    int i = 0;
+    for (auto& obj : objects)
+    {
+        i += 1;
+        float angle = std::fmod(obj.m_transform.rotation.z() + 0.1f * 1, 360.0f);
+        if (angle < 0) {
+            angle += 2 * M_PI; // Ensure non-negative
+        }
+        obj.m_transform.rotation.setZ(angle);
+    }
 
     m_pipeline->bind(commandBuffer);
+
+    auto projectView = camera.getProjection() * camera.getView();
 
     for (auto& obj : objects)
     {
 
         SimplePushConstantData push{};
-        push.offset = obj.m_transform2d.translation;
         push.color = obj.m_color;
-        push.transform = obj.m_transform2d.mat2f();
+        push.transform = projectView * obj.m_transform.mat4f();
         vkCmdPushConstants(
             commandBuffer,
             m_pipelineLayout,

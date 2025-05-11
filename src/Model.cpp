@@ -97,7 +97,7 @@ void Model::createIndexBuffers(const std::vector<uint32_t>& indices)
 
     m_device.createBuffer(
         bufferSize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         m_indexBuffer,
         m_indexBufferMemory
@@ -124,7 +124,7 @@ std::vector<VkVertexInputAttributeDescription> Model::Vertex::getAttributeDescri
     std::vector<VkVertexInputAttributeDescription> attributeDesciption(2);
     attributeDesciption[0].binding = 0;
     attributeDesciption[0].location = 0;
-    attributeDesciption[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDesciption[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDesciption[0].offset = offsetof(Vertex, position);
 
     attributeDesciption[1].binding = 0;

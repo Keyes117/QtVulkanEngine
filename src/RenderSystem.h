@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Camera.h"
 #include "const.h"
 #include "Device.h"
 #include "Model.h"
 #include "Object.h"
 #include "Pipeline.h"
 #include "SwapChain.h"
-
 #include <memory>
 #include <vector>
 
@@ -23,7 +23,7 @@ public:
     RenderSystem(RenderSystem&&) = delete;
     RenderSystem& operator=(RenderSystem&&) = delete;
 
-    void renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects);
+    void renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects, const Camera& camera);
 
 private:
     void createPipelineLayout();

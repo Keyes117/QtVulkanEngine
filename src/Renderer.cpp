@@ -185,5 +185,4 @@ void Renderer::recreateSwapChain()
         }
     }
 
-    //TODO: recreate pipeline
 }

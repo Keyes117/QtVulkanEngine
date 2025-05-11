@@ -3,13 +3,13 @@
 #include "const.h"
 #include "Device.h"
 #include "Model.h"
-#include "MyVulkanWindow.h"
 #include "MyVulkanWidget.h"
+#include "MyVulkanWindow.h"
 #include "Object.h"
 #include "Pipeline.h"
 #include "Renderer.h"
-#include "SwapChain.h"
 #include "RenderSystem.h"
+#include "SwapChain.h"
 
 #include <memory>
 #include <vector>
@@ -37,13 +37,14 @@ private:
 private:
 
 
-    MyVulkanWidget                  m_widget;
-    MyVulkanWindow& m_window;
+    MyVulkanWidget                  m_widget;               //窗口类，后续考虑跟window一样改成引用
+    MyVulkanWindow& m_window;                               //控制窗口中的vulkan 窗口
 
-    Device                          m_device;
-    Renderer                        m_renderer;
-    RenderSystem                    m_renderSystem;
-    std::vector<Object>             m_objects;
+    Camera                          m_camera;               //相机类
+    Device                          m_device;               //负责初始化Vulkan基础组件
+    Renderer                        m_renderer;             //swapchain 和 commandbuffer
+    RenderSystem                    m_renderSystem;         //pipeline 和 pipelineLayout
+    std::vector<Object>             m_objects;              // 绘画对象
 
 
 };
