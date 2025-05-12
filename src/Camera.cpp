@@ -20,14 +20,16 @@ void Camera::setOrthographciProjection(
 void Camera::setPrespectiveProjection(float fovy, float aspect, float near, float far)
 {
     assert(std::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
-    const float tanHaldFovy = tan(fovy / 2.f);
+    const float tanHalfFovy = tan(fovy / 2.f);
     m_projectionMartrix.fill(0.f);
 
-    m_projectionMartrix(0, 0) = 1.f / (aspect * tanHaldFovy);
-    m_projectionMartrix(1, 1) = 1.f / tanHaldFovy;
+    m_projectionMartrix(0, 0) = 1.f / (aspect * tanHalfFovy);
+    m_projectionMartrix(1, 1) = 1.f / tanHalfFovy;
     m_projectionMartrix(2, 2) = far / (far - near);
-    m_projectionMartrix(2, 3) = 1.f;
-    m_projectionMartrix(3, 2) = -(far * near) / (far - near);
+    m_projectionMartrix(2, 3) = -(far * near) / (far - near);
+    m_projectionMartrix(3, 2) = 1.f;
+    //m_projectionMartrix(2, 3) = 1.f;
+    //m_projectionMartrix(3, 2) = -(far * near) / (far - near);
 }
 
 void Camera::setViewDirection(QVector3D position, QVector3D direction, QVector3D up)
@@ -40,30 +42,25 @@ void Camera::setViewDirection(QVector3D position, QVector3D direction, QVector3D
     m_viewMatrix.setToIdentity();
 
     // 3) 把旋转部分写入（列 0 = u，列 1 = v，列 2 = w）
-    m_viewMatrix(0, 0) = u.x();
-    m_viewMatrix(0, 1) = v.x();
-    m_viewMatrix(0, 2) = w.x();
-    m_viewMatrix(1, 0) = u.y();
-    m_viewMatrix(1, 1) = v.y();
-    m_viewMatrix(1, 2) = w.y();
-    m_viewMatrix(2, 0) = u.z();
-    m_viewMatrix(2, 1) = v.z();
-    m_viewMatrix(2, 2) = w.z();
+    m_viewMatrix(0, 0) = u.x();  m_viewMatrix(0, 1) = v.x();  m_viewMatrix(0, 2) = -w.x();
+    m_viewMatrix(1, 0) = u.y();  m_viewMatrix(1, 1) = v.y();  m_viewMatrix(1, 2) = -w.y();
+    m_viewMatrix(2, 0) = u.z();  m_viewMatrix(2, 1) = v.z();  m_viewMatrix(2, 2) = -w.z();
 
     // 4) 再把平移部分写入（-dot(u,position), -dot(v,position), -dot(w,position)）
-    m_viewMatrix(3, 0) = -QVector3D::dotProduct(u, position);
-    m_viewMatrix(3, 1) = -QVector3D::dotProduct(v, position);
-    m_viewMatrix(3, 2) = -QVector3D::dotProduct(w, position);
+    m_viewMatrix(0, 3) = -QVector3D::dotProduct(u, position);
+    m_viewMatrix(1, 3) = -QVector3D::dotProduct(v, position);
+    m_viewMatrix(2, 3) = -QVector3D::dotProduct(w, position);
 }
 
 void Camera::setViewTarget(QVector3D position, QVector3D target, QVector3D up)
 {
-    m_viewMatrix.setToIdentity();
-    m_viewMatrix.lookAt(
-        position,   // eye
-        target - position,     // center
-        up
-    );
+    setViewDirection(position, target - position, up);
+    //m_viewMatrix.setToIdentity();
+    //m_viewMatrix.lookAt(
+    //    position,   // eye
+    //    target - position,     // center
+    //    up
+    //);
 }
 
 void Camera::setViewLocation(QVector3D position, QVector3D rotation)

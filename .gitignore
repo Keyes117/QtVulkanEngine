@@ -34,5 +34,6 @@
 .vs/
 bin/
 obj/
+src/x64
 
 *vcxproj.user

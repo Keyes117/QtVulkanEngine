@@ -40,7 +40,7 @@ private:
     MyVulkanWidget                  m_widget;               //窗口类，后续考虑跟window一样改成引用
     MyVulkanWindow& m_window;                               //控制窗口中的vulkan 窗口
 
-    Camera                          m_camera;               //相机类
+    Camera                          m_camera{};               //相机类
     Device                          m_device;               //负责初始化Vulkan基础组件
     Renderer                        m_renderer;             //swapchain 和 commandbuffer
     RenderSystem                    m_renderSystem;         //pipeline 和 pipelineLayout
