@@ -4,7 +4,9 @@
 #include <QApplication>
 #include <qtimer.h>
 
-#include "Keyboard_Movement_Controller.h"
+#include "Movement_Controller.h"
+
+constexpr float MIN_FRAME_TIME = 0.01;
 
 float degressToRadians(float degress)
 {
@@ -50,6 +52,9 @@ void MyVulkanApp::run()
             auto newTime = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - m_lastFrameTime).count();
             m_lastFrameTime = newTime;
+
+            frameTime = (frameTime < MIN_FRAME_TIME) ? frameTime : MIN_FRAME_TIME;
+
 
             QObject::connect(&m_window, &MyVulkanWindow::keyPressed, [=](int key, Qt::KeyboardModifiers mods) {
 
