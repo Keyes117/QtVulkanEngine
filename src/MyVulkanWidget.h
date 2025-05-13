@@ -21,6 +21,9 @@ public:
 
     MyVulkanWindow& getVulkanWindowHandle() { return m_vulkanWindow; }
 
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+
     //slots
 private:
     void createToolBar();
@@ -29,6 +32,7 @@ private:
 
 private:
     std::unique_ptr<Ui::MyVulkanWidgetClass> m_ui;
+
 
     MyVulkanWindow m_vulkanWindow;
 };

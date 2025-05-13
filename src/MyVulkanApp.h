@@ -11,6 +11,7 @@
 #include "RenderSystem.h"
 #include "SwapChain.h"
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -36,10 +37,11 @@ private:
 
 private:
 
-
+    std::chrono::high_resolution_clock::time_point          m_lastFrameTime;
     MyVulkanWidget                  m_widget;               //窗口类，后续考虑跟window一样改成引用
     MyVulkanWindow& m_window;                               //控制窗口中的vulkan 窗口
 
+    Object                          m_cameraObject;
     Camera                          m_camera{};               //相机类
     Device                          m_device;               //负责初始化Vulkan基础组件
     Renderer                        m_renderer;             //swapchain 和 commandbuffer

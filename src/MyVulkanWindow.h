@@ -2,9 +2,10 @@
 
 #include <qevent.h>
 #include <QWindow>
-
+#include <QKeyEvent>
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <Windows.h>
+
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
@@ -39,6 +40,11 @@ public:
 
 signals:
     void updateRequested();
+    void keyPressed(int key, Qt::KeyboardModifiers mods);
+    void mousePressed(QMouseEvent* e);
+    void mouseMoved(QMouseEvent* e);
+    void wheelEvent(QWheelEvent* e);
+
 
 public slots:
     void setDrawNone() { m_drawMode = DrawMode::None; }
@@ -48,6 +54,7 @@ public slots:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void exposeEvent(QExposeEvent* event) override;
     bool event(QEvent* event) override;

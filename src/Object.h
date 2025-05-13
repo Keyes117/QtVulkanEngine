@@ -15,13 +15,10 @@ struct TransformComponent
         QMatrix4x4 transform;
         transform.setToIdentity();
         /*
-
               transform.translate(translation);
-
               transform.rotate(rotation.y(), { 0,1,0 });
               transform.rotate(rotation.z(), { 0,0,1 });
               transform.rotate(rotation.x(), { 1,0,0 });
-
               transform.scale(scale);*/
 
         const float c3 = std::cos(rotation.z());

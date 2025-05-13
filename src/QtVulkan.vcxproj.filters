@@ -59,7 +59,12 @@
     <ClCompile Include="MyVulkanWidget.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Camera.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Keyboard_Movement_Controller.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -89,7 +94,12 @@
     <ClInclude Include="RenderSystem.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h" />
+    <ClInclude Include="Camera.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Keyboard_Movement_Controller.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MyVulkanWindow.h">

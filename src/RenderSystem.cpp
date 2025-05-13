@@ -77,9 +77,8 @@ void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Obje
         SimplePushConstantData push{};
         push.color = obj.m_color;
 
-
-        obj.m_transform.rotation.setY(std::fmod(obj.m_transform.rotation.y() + 0.01f, 2 * M_PI));
-        obj.m_transform.rotation.setX(std::fmod(obj.m_transform.rotation.x() + 0.005f, 2 * M_PI));
+        //obj.m_transform.rotation.setY(std::fmod(obj.m_transform.rotation.y() + 0.01f, 2 * M_PI));
+        //obj.m_transform.rotation.setX(std::fmod(obj.m_transform.rotation.x() + 0.005f, 2 * M_PI));
 
         push.transform = projectView * obj.m_transform.mat4f();
         vkCmdPushConstants(

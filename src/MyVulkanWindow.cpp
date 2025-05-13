@@ -39,6 +39,9 @@ void MyVulkanWindow::mousePressEvent(QMouseEvent* event)
     float normalizedX = (2.0f * mousePos.x()) / windowWidth - 1.0f;
     float normalizedY = 1.0f - (2.0f * mousePos.y()) / windowHeight;
 
+    emit mousePressed(event);
+
+    QWindow::mousePressEvent(event);
 
 }
 
@@ -68,3 +71,9 @@ bool MyVulkanWindow::event(QEvent* event)
     return QWindow::event(event);
 }
 
+void MyVulkanWindow::keyPressEvent(QKeyEvent* event)
+{
+    emit keyPressed(event->key(), event->modifiers());
+
+    QWindow::keyPressEvent(event);
+}

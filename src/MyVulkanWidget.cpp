@@ -21,6 +21,11 @@ MyVulkanWidget::~MyVulkanWidget()
 }
 
 
+void MyVulkanWidget::keyPressEvent(QKeyEvent* event)
+{
+    qDebug() << "widget catch " << event->key();
+}
+
 void MyVulkanWidget::createToolBar()
 {
     QToolBar* toolBar = addToolBar("Main Tool Bar");
@@ -51,7 +56,8 @@ void MyVulkanWidget::createProjectPanel()
 
 void MyVulkanWidget::createVulkanContainer()
 {
-    QWidget* widget = QWidget::createWindowContainer(&m_vulkanWindow, this);
-    setCentralWidget(widget);
+    QWidget* vulkanWindow = QWidget::createWindowContainer(&m_vulkanWindow, this);
+    vulkanWindow->setFocusPolicy(Qt::ClickFocus);
+    setCentralWidget(vulkanWindow);
 
 }

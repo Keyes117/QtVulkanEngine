@@ -10,8 +10,8 @@ class Model
 public:
     struct Vertex
     {
-        QVector3D position;
-        QVector3D color;
+        QVector3D position{};
+        QVector3D color{};
 
         static std::vector<VkVertexInputBindingDescription> getBindingDescription();
         static std::vector<VkVertexInputAttributeDescription> getAttributeDescription();
