@@ -1,4 +1,4 @@
-#include "MyVulkanWindow.h"
+ï»¿#include "MyVulkanWindow.h"
 
 #include <stdexcept>
 
@@ -25,21 +25,27 @@ void MyVulkanWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR* surf
         throw std::runtime_error("failed to crate Win32 Vulkan Surface");
     }
 }
+void MyVulkanWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::MiddleButton)
+    {
+        m_isDragging = false;
+    }
 
+    QWindow::mouseReleaseEvent(event);
+}
 void MyVulkanWindow::mousePressEvent(QMouseEvent* event)
 {
-    // »ñÈ¡´°¿ÚµÄ³ß´ç
-    int windowWidth = this->width();
-    int windowHeight = this->height();
-
-    // »ñÈ¡Êó±êÎ»ÖÃ
-    QPoint mousePos = event->pos();
-
-    // ½«ÆÁÄ»×ø±ê×ª»»Îª¹éÒ»»¯Éè±¸×ø±ê [-1, 1]
-    float normalizedX = (2.0f * mousePos.x()) / windowWidth - 1.0f;
-    float normalizedY = 1.0f - (2.0f * mousePos.y()) / windowHeight;
-
-    emit mousePressed(event);
+    // èŽ·å–çª—å£çš„å°ºå¯¸
+    if (event->button() == Qt::MiddleButton)
+    {
+        // èŽ·å–ä¸Šæ¬¡ä¸­é—´æŒ‰ä¸‹é¼ æ ‡ä½ç½®
+        if (!m_isDragging)
+        {
+            m_isDragging = true;
+            m_lastMousePos = event->pos();
+        }
+    }
 
     QWindow::mousePressEvent(event);
 
@@ -76,4 +82,52 @@ void MyVulkanWindow::keyPressEvent(QKeyEvent* event)
     emit keyPressed(event->key(), event->modifiers());
 
     QWindow::keyPressEvent(event);
+}
+
+void MyVulkanWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    if (m_isDragging)
+    {
+        QPointF currentPos = event->pos();
+        QPointF delte = currentPos - m_lastMousePos;
+        m_lastMousePos = currentPos;
+
+        int windowWidth = this->width();
+        int windowHeight = this->height();
+
+
+        // å°†å±å¹•åæ ‡è½¬æ¢ä¸ºå½’ä¸€åŒ–è®¾å¤‡åæ ‡ [-1, 1]
+        float normalizedX = -(2.0f * delte.x()) / windowWidth;
+        float normalizedY = -(2.0f * delte.y()) / windowHeight;
+
+
+        // NDC èŒƒå›´ [-1,1] å¯¹åº”è§†é”¥ [left,right]ï¼Œæ‰€ä»¥å¢žé‡è¦ä¹˜ Â½
+        //float world_dx = normalizedX * (windowWidth * 0.5f);
+        //float world_dy = normalizedY * (windowHeight * 0.5f);
+
+        QVector3D delteVector = { normalizedX, normalizedY, 0.f };
+        emit CameraMovement(delteVector);
+    }
+
+    QWindow::mouseMoveEvent(event);
+}
+
+void MyVulkanWindow::wheelEvent(QWheelEvent* event)
+{
+    int deltaY = event->angleDelta().y();
+    qDebug() << deltaY;
+
+    float numSteps = deltaY / 120.0f;
+
+    QPointF pos = event->position();
+
+
+    float normalizedX = 2.0f * pos.x() / m_width - 1.0f;
+    float normalizedY = 2.0f * pos.y() / m_height - 1.0f;
+
+    qDebug() << pos.x() << "," << pos.y();
+    qDebug() << normalizedX << "," << normalizedY;
+
+    QVector3D zVector{ normalizedX,normalizedY,numSteps };
+    emit CameraZoom(zVector);
 }

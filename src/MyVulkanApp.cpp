@@ -6,7 +6,7 @@
 
 #include "Movement_Controller.h"
 
-constexpr float MIN_FRAME_TIME = 0.01;
+constexpr float MAX_FRAME_TIME = 0.001;
 
 float degressToRadians(float degress)
 {
@@ -16,6 +16,8 @@ float degressToRadians(float degress)
 MyVulkanApp::MyVulkanApp() :
     m_window(m_widget.getVulkanWindowHandle()),
     m_cameraObject(Object::createObject()),
+    m_keyBoardController(m_cameraObject, m_camera),
+    m_mouseController(m_cameraObject, m_camera),
     m_device(m_window),
     m_renderer(m_window, m_device),
     m_renderSystem(m_device, m_renderer.getSwapChainRenderPass())
@@ -36,7 +38,7 @@ void MyVulkanApp::run()
     loadObjects();
 
     //TODO: 设置Camera可以通过鼠标或者方向键进行调整
-    m_camera = Camera{};
+
     //m_camera.setViewDirection(QVector3D(.0f, 0.0f, 0.f), QVector3D(.5f, 0.5f, 1.f));
     m_camera.setViewDirection(QVector3D(0.f, 0.f, 0.f), QVector3D(0.f, 0.f, 1.f));
 
@@ -53,15 +55,21 @@ void MyVulkanApp::run()
             float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - m_lastFrameTime).count();
             m_lastFrameTime = newTime;
 
-            frameTime = (frameTime < MIN_FRAME_TIME) ? frameTime : MIN_FRAME_TIME;
+            frameTime = (frameTime < MAX_FRAME_TIME) ? frameTime : MAX_FRAME_TIME;
 
 
             QObject::connect(&m_window, &MyVulkanWindow::keyPressed, [=](int key, Qt::KeyboardModifiers mods) {
-
-                Keyboard_Movement_Controller::moveInPlane(key, frameTime, m_cameraObject);
-                m_camera.setViewLocation(m_cameraObject.m_transform.translation, m_cameraObject.m_transform.rotation);
-
+                m_keyBoardController.moveInPlane(key, frameTime);
                 });
+
+            QObject::connect(&m_window, &MyVulkanWindow::CameraMovement, [=](QVector3D delte) {
+                m_mouseController.moveInPlane(delte, frameTime);
+                });
+
+            QObject::connect(&m_window, &MyVulkanWindow::CameraZoom, [=](QVector3D ndcAndSteps) {
+                m_mouseController.zoom(ndcAndSteps, frameTime);
+                });
+
 
             //
             float aspect = m_renderer.getAspectRatio();

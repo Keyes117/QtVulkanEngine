@@ -41,10 +41,8 @@ public:
 signals:
     void updateRequested();
     void keyPressed(int key, Qt::KeyboardModifiers mods);
-    void mousePressed(QMouseEvent* e);
-    void mouseMoved(QMouseEvent* e);
-    void wheelEvent(QWheelEvent* e);
-
+    void CameraMovement(QVector3D vector);
+    void CameraZoom(QVector3D ndcAndSteps);
 
 public slots:
     void setDrawNone() { m_drawMode = DrawMode::None; }
@@ -53,7 +51,10 @@ public slots:
     void setDrawPolygon() { m_drawMode = DrawMode::Polygon; }
 
 protected:
+    void mouseReleaseEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void exposeEvent(QExposeEvent* event) override;
@@ -62,6 +63,10 @@ protected:
 private:
     int m_width{ 800 };
     int m_height{ 600 };
+
+    bool      m_isDragging;
+    QPointF   m_lastMousePos;
+
 
     DrawMode m_drawMode{ DrawMode::None };
     bool m_framebufferResized{ false };

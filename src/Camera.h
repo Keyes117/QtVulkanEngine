@@ -15,8 +15,6 @@ public:
         float fovy, float aspect, float near, float far
     );
 
-
-    //TODO: 这里View矩阵得调整
     void setViewDirection(QVector3D position, QVector3D direction, QVector3D up = QVector3D(0.f, -1.f, 0.f));
     void setViewTarget(QVector3D position, QVector3D target, QVector3D up = QVector3D(0.f, -1.f, 0.f));
     void setViewLocation(QVector3D position, QVector3D rotation);

@@ -62,7 +62,7 @@
     <ClCompile Include="Camera.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Keyboard_Movement_Controller.cpp">
+    <ClCompile Include="Movement_Controller.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
@@ -97,7 +97,7 @@
     <ClInclude Include="Camera.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="Keyboard_Movement_Controller.h">
+    <ClInclude Include="Movement_Controller.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
