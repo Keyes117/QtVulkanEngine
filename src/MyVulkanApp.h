@@ -52,6 +52,6 @@ private:
     RenderSystem                    m_renderSystem;         //pipeline ∫Õ pipelineLayout
     std::vector<Object>             m_objects;              // ªÊª≠∂‘œÛ
 
-
+    std::vector<std::unique_ptr<Buffer>>  m_spGlobalUboBuffers;
 };
 

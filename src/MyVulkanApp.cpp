@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <qtimer.h>
 
+#include "Buffer.h"
 #include "Movement_Controller.h"
 
 constexpr float MAX_FRAME_TIME = 0.001;
@@ -12,6 +13,12 @@ float degressToRadians(float degress)
 {
     return degress * static_cast<float>(M_PI) / 180.0f;
 }
+
+
+struct GlobalUbo
+{
+    QMatrix4x4 projectionView;
+};
 
 MyVulkanApp::MyVulkanApp() :
     m_window(m_widget.getVulkanWindowHandle()),
@@ -22,41 +29,52 @@ MyVulkanApp::MyVulkanApp() :
     m_renderer(m_window, m_device),
     m_renderSystem(m_device, m_renderer.getSwapChainRenderPass())
 {
+    auto minOffsetAlignment = std::lcm(
+        m_device.properties.limits.minUniformBufferOffsetAlignment,
+        m_device.properties.limits.nonCoherentAtomSize
+    );
 
+    m_spGlobalUboBuffers.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
+
+    for (int i = 0; i < m_spGlobalUboBuffers.size(); i++)
+    {
+        m_spGlobalUboBuffers[i] = std::make_unique<Buffer>(m_device,
+            sizeof(GlobalUbo),
+            1,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+            m_device.properties.limits.minUniformBufferOffsetAlignment);
+        m_spGlobalUboBuffers[i]->map();
+    }
 }
 
 MyVulkanApp::~MyVulkanApp()
 {
+
 }
 
 void MyVulkanApp::run()
 {
-
     m_widget.resize(800, 600);
     m_widget.show();
 
     loadObjects();
-
-    //TODO: 设置Camera可以通过鼠标或者方向键进行调整
-
-    //m_camera.setViewDirection(QVector3D(.0f, 0.0f, 0.f), QVector3D(.5f, 0.5f, 1.f));
     m_camera.setViewDirection(QVector3D(0.f, 0.f, 0.f), QVector3D(0.f, 0.f, 1.f));
-
     m_lastFrameTime = std::chrono::high_resolution_clock::now();
-
-
-
     QObject::connect(&m_window, &MyVulkanWindow::updateRequested, [this]()
         {
             if (!m_window.isExposed())
                 return;
 
+            float aspect = m_renderer.getAspectRatio();
+            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 200.f);
+
+            //TODO:检查这里的帧时间的问题，好像MAX_FRAME_TIME 会失效？
             auto newTime = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - m_lastFrameTime).count();
             m_lastFrameTime = newTime;
 
             frameTime = (frameTime < MAX_FRAME_TIME) ? frameTime : MAX_FRAME_TIME;
-
 
             QObject::connect(&m_window, &MyVulkanWindow::keyPressed, [=](int key, Qt::KeyboardModifiers mods) {
                 m_keyBoardController.moveInPlane(key, frameTime);
@@ -71,15 +89,27 @@ void MyVulkanApp::run()
                 });
 
 
-            //
-            float aspect = m_renderer.getAspectRatio();
-            //m_camera.setOrthographciProjection(-aspect, aspect, -1, 1, -1.f, 10.f);
-            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 200.f);
 
+            //render
             if (auto commandBuffer = m_renderer.beginFrame())
             {
+                //update
+                int frameIndex = m_renderer.getFrameIndex();
+                FrameInfo frameInfo{
+                    frameIndex,
+                    frameTime,
+                    commandBuffer,
+                    m_camera
+                };
+
+                GlobalUbo ubo{};
+                ubo.projectionView = m_camera.getProjection() * m_camera.getView();
+                m_spGlobalUboBuffers[frameIndex]->writeToIndex(&ubo, frameIndex);
+                m_spGlobalUboBuffers[frameIndex]->flushIndex(frameIndex);
+
+                //render
                 m_renderer.beginSwapChainRenderPass(commandBuffer);
-                this->getRenderSystem()->renderObjects(commandBuffer, m_objects, m_camera);
+                this->getRenderSystem()->renderObjects(frameInfo, m_objects);
                 m_renderer.endSwapChainRenderPass(commandBuffer);
                 m_renderer.endFrame();
             }

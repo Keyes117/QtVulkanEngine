@@ -4,6 +4,8 @@
 #include <QApplication>
 #include <qtimer.h>
 
+
+
 RenderSystem::RenderSystem(Device& device, VkRenderPass renderPass)
     :m_device(device)
 {
@@ -54,7 +56,7 @@ void RenderSystem::createPipeline(VkRenderPass renderPass)
     );
 }
 
-void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Object>& objects, const Camera& camera)
+void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects)
 {
     //int i = 0;
     //for (auto& obj : objects)
@@ -67,9 +69,9 @@ void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Obje
     //    obj.m_transform.rotation.setZ(angle);
     //}
 
-    m_pipeline->bind(commandBuffer);
+    m_pipeline->bind(frameInfo.commandBuffer);
 
-    auto projectView = camera.getProjection() * camera.getView();
+    auto projectView = frameInfo.camera.getProjection() * frameInfo.camera.getView();
 
     for (auto& obj : objects)
     {
@@ -82,14 +84,14 @@ void RenderSystem::renderObjects(VkCommandBuffer commandBuffer, std::vector<Obje
 
         push.transform = projectView * obj.m_transform.mat4f();
         vkCmdPushConstants(
-            commandBuffer,
+            frameInfo.commandBuffer,
             m_pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             sizeof(SimplePushConstantData),
             &push);
-        obj.m_model->bind(commandBuffer);
-        obj.m_model->draw(commandBuffer);
+        obj.m_model->bind(frameInfo.commandBuffer);
+        obj.m_model->draw(frameInfo.commandBuffer);
     }
 }
 

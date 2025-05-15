@@ -109,7 +109,10 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simpl
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Descriptors.cpp" />
+    <ClCompile Include="FrameInfo.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Movement_Controller.cpp" />
     <ClCompile Include="MyVulkanApp.cpp" />
@@ -126,9 +129,12 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simpl
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Buffer.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="const.h" />
+    <ClInclude Include="Descriptors.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="FrameInfo.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Movement_Controller.h" />
     <ClInclude Include="MyVulkanApp.h" />

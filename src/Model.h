@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Buffer.h"
 #include "Device.h"
 
 #include <qvector2d.h>
@@ -41,14 +42,14 @@ private:
 
 private:
     Device& m_device;
-    VkBuffer        m_vertexBuffer;
-    VkDeviceMemory  m_vertexBufferMemory;
-    uint32_t        m_vertexCount;
 
-    bool            m_hasIndexBuffer;
-    VkBuffer        m_indexBuffer;
-    VkDeviceMemory  m_indexBufferMemory;
-    uint32_t        m_indexCount;
+
+    std::unique_ptr<Buffer>     m_vertexBuffer;
+    uint32_t                    m_vertexCount;
+
+    bool                        m_hasIndexBuffer;
+    std::unique_ptr<Buffer>     m_indexBuffer;
+    uint32_t                    m_indexCount;
 };
 
 
