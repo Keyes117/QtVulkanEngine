@@ -24,7 +24,7 @@ public:
         std::unique_ptr<DescriptorSetLayout> build() const;
     private:
         Device& m_device;
-        std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings{};
+        std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> m_bindings{};
     };
 
     DescriptorSetLayout(
@@ -36,7 +36,7 @@ public:
     DescriptorSetLayout(const DescriptorSetLayout&) = delete;
     DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;
 
-    DescriptorSetLayout getDescriptorSetLayout() const {}
+    VkDescriptorSetLayout getDescriptorSetLayout() const { return m_descriptorSetLayout; }
 
 private:
     Device& m_device;
@@ -54,16 +54,16 @@ public:
     public:
         Builder(Device& device) : m_device(device) {}
 
-        Builder& addPoolSize(VkDescriptorType descriptorType, uint32_t);
+        Builder& addPoolSize(VkDescriptorType descriptorType, uint32_t count);
         Builder& setPoolFlags(VkDescriptorPoolCreateFlags flags);
         Builder& setMaxSets(uint32_t count);
         std::unique_ptr<DescriptorPool> build() const;
 
     private:
         Device& m_device;
-        std::vector<VkDescriptorPoolSize> m_poolSize{};
-        uint32_t maxSets = 1000;
-        VkDescriptorPoolCreateFlags poolFlags = 0;
+        std::vector<VkDescriptorPoolSize> m_poolSizes{};
+        uint32_t m_maxSets = 1000;
+        VkDescriptorPoolCreateFlags m_poolFlags = 0;
     };
 
 
@@ -77,7 +77,7 @@ public:
     DescriptorPool(const DescriptorPool&) = delete;
     DescriptorPool& operator=(const DescriptorPool&) = delete;
 
-    bool allocateDescriptor(
+    bool allocateDescriptorSet(
         const VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor
     ) const;
 
@@ -105,8 +105,8 @@ public:
     void overwrite(VkDescriptorSet& set);
 
 private:
-    DescriptorSetLayout& setLayout;
-    DescriptorPool& pool;
-    std::vector<VkWriteDescriptorSet> writes;
+    DescriptorSetLayout& m_setLayout;
+    DescriptorPool& m_pool;
+    std::vector<VkWriteDescriptorSet> m_writes;
 };
 

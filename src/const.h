@@ -12,7 +12,7 @@ constexpr float IdentityMmatrix2D[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 struct SimplePushConstantData
 {
-    QMatrix4x4   transform;
+    QMatrix4x4   modelMatrix;
     alignas(16) QVector3D color;
 };
 

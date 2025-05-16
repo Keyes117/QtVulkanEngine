@@ -71,7 +71,9 @@
     <ClCompile Include="FrameInfo.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Descriptors.cpp" />
+    <ClCompile Include="Descriptors.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -113,7 +115,9 @@
     <ClInclude Include="FrameInfo.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="Descriptors.h" />
+    <ClInclude Include="Descriptors.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MyVulkanWindow.h">

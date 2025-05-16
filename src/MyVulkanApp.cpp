@@ -17,7 +17,8 @@ float degressToRadians(float degress)
 
 struct GlobalUbo
 {
-    QMatrix4x4 projectionView;
+    float projectionViewMartix[16];
+    QVector3D color = { 1,0,0 };
 };
 
 MyVulkanApp::MyVulkanApp() :
@@ -26,9 +27,17 @@ MyVulkanApp::MyVulkanApp() :
     m_keyBoardController(m_cameraObject, m_camera),
     m_mouseController(m_cameraObject, m_camera),
     m_device(m_window),
-    m_renderer(m_window, m_device),
-    m_renderSystem(m_device, m_renderer.getSwapChainRenderPass())
+    m_renderer(m_window, m_device)
 {
+
+    m_globalPool = DescriptorPool::Builder(m_device)
+        .setMaxSets(SwapChain::MAX_FRAMES_IN_FLIGHT)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
+        .build();
+
+
+
     auto minOffsetAlignment = std::lcm(
         m_device.properties.limits.minUniformBufferOffsetAlignment,
         m_device.properties.limits.nonCoherentAtomSize
@@ -46,6 +55,25 @@ MyVulkanApp::MyVulkanApp() :
             m_device.properties.limits.minUniformBufferOffsetAlignment);
         m_spGlobalUboBuffers[i]->map();
     }
+
+    m_globalSetLayout = DescriptorSetLayout::Builder(m_device)
+        .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+        .build();
+
+
+    m_globalDescriptSets.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
+    for (int i = 0; i < m_globalDescriptSets.size(); i++)
+    {
+        auto bufferInfo = m_spGlobalUboBuffers[i]->descriptorInfo();
+        DescriptorWriter(*m_globalSetLayout, *m_globalPool)
+            .writeBuffer(0, &bufferInfo)
+            .build(m_globalDescriptSets[i]);
+    }
+
+    m_renderSystem = std::make_unique<RenderSystem>(m_device,
+        m_renderer.getSwapChainRenderPass(),
+        m_globalSetLayout->getDescriptorSetLayout());
+
 }
 
 MyVulkanApp::~MyVulkanApp()
@@ -99,11 +127,14 @@ void MyVulkanApp::run()
                     frameIndex,
                     frameTime,
                     commandBuffer,
-                    m_camera
+                    m_camera,
+                    m_globalDescriptSets[frameIndex]
                 };
 
+                auto metaData = (m_camera.getProjection() * m_camera.getView()).constData();
+
                 GlobalUbo ubo{};
-                ubo.projectionView = m_camera.getProjection() * m_camera.getView();
+                std::memcpy(&ubo.projectionViewMartix, metaData, 16 * sizeof(float));
                 m_spGlobalUboBuffers[frameIndex]->writeToIndex(&ubo, frameIndex);
                 m_spGlobalUboBuffers[frameIndex]->flushIndex(frameIndex);
 

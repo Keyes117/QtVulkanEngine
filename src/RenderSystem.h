@@ -14,20 +14,20 @@
 class RenderSystem
 {
 public:
-    RenderSystem(Device& device, VkRenderPass renderPass);
+    RenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~RenderSystem();
 
 
     RenderSystem(const RenderSystem&) = delete;
     RenderSystem& operator=(const RenderSystem&) = delete;
 
-    RenderSystem(RenderSystem&&) = delete;
-    RenderSystem& operator=(RenderSystem&&) = delete;
+    //RenderSystem(RenderSystem&&) = delete;
+    //RenderSystem& operator=(RenderSystem&&) = delete;
 
     void renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects);
 
 private:
-    void createPipelineLayout();
+    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);
 
 

@@ -6,10 +6,10 @@
 
 
 
-RenderSystem::RenderSystem(Device& device, VkRenderPass renderPass)
+RenderSystem::RenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
     :m_device(device)
 {
-    createPipelineLayout();
+    createPipelineLayout(globalSetLayout);
     createPipeline(renderPass);
 }
 
@@ -18,18 +18,19 @@ RenderSystem::~RenderSystem()
     vkDestroyPipelineLayout(m_device.device(), m_pipelineLayout, nullptr);
 }
 
-void RenderSystem::createPipelineLayout()
+void RenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
 {
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(SimplePushConstantData);
 
+    std::vector<VkDescriptorSetLayout> descriptorSetLayout{ globalSetLayout };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayout.size());
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayout.data();
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
     if (vkCreatePipelineLayout(m_device.device(), &pipelineLayoutInfo,
@@ -58,20 +59,18 @@ void RenderSystem::createPipeline(VkRenderPass renderPass)
 
 void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects)
 {
-    //int i = 0;
-    //for (auto& obj : objects)
-    //{
-    //    i += 1;
-    //    float angle = std::fmod(obj.m_transform.rotation.z() + 0.1f * 1, 360.0f);
-    //    if (angle < 0) {
-    //        angle += 2 * M_PI; // Ensure non-negative
-    //    }
-    //    obj.m_transform.rotation.setZ(angle);
-    //}
-
     m_pipeline->bind(frameInfo.commandBuffer);
 
-    auto projectView = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+    vkCmdBindDescriptorSets(
+        frameInfo.commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_pipelineLayout,
+        0,
+        1,
+        &frameInfo.globalDescriptorSet,
+        0,
+        nullptr
+    );
 
     for (auto& obj : objects)
     {
@@ -79,10 +78,7 @@ void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& obje
         SimplePushConstantData push{};
         push.color = obj.m_color;
 
-        //obj.m_transform.rotation.setY(std::fmod(obj.m_transform.rotation.y() + 0.01f, 2 * M_PI));
-        //obj.m_transform.rotation.setX(std::fmod(obj.m_transform.rotation.x() + 0.005f, 2 * M_PI));
-
-        push.transform = projectView * obj.m_transform.mat4f();
+        push.modelMatrix = obj.m_transform.mat4f();
         vkCmdPushConstants(
             frameInfo.commandBuffer,
             m_pipelineLayout,
