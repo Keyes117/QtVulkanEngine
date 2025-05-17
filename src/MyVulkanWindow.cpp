@@ -34,6 +34,7 @@ void MyVulkanWindow::mouseReleaseEvent(QMouseEvent* event)
 
     QWindow::mouseReleaseEvent(event);
 }
+
 void MyVulkanWindow::mousePressEvent(QMouseEvent* event)
 {
     // 获取窗口的尺寸
@@ -45,6 +46,24 @@ void MyVulkanWindow::mousePressEvent(QMouseEvent* event)
             m_isDragging = true;
             m_lastMousePos = event->pos();
         }
+    }
+    else if (event->button() == Qt::LeftButton)
+    {
+        if (m_drawMode != DrawMode::None)
+        {
+            auto pos = event->pos();
+            float normalizedX = normalizeX(pos.x());
+            float normalizedY = normalizeX(pos.y());
+
+            QVector3D vertex(normalizedX, normalizedY, 0);
+            emit drawAddVertex(vertex);
+        }
+
+    }
+    else if (event->button() == Qt::RightButton)
+    {
+        if (m_drawMode != DrawMode::None)
+            emit drawEnd();
     }
 
     QWindow::mousePressEvent(event);
@@ -100,13 +119,22 @@ void MyVulkanWindow::mouseMoveEvent(QMouseEvent* event)
         float normalizedX = -(2.0f * delte.x()) / windowWidth;
         float normalizedY = -(2.0f * delte.y()) / windowHeight;
 
-
         // NDC 范围 [-1,1] 对应视锥 [left,right]，所以增量要乘 ½
         //float world_dx = normalizedX * (windowWidth * 0.5f);
         //float world_dy = normalizedY * (windowHeight * 0.5f);
 
         QVector3D delteVector = { normalizedX, normalizedY, 0.f };
         emit CameraMovement(delteVector);
+    }
+    if (m_drawMode != DrawMode::None)
+    {
+        auto pos = event->pos();
+        float normalizedX = normalizeX(pos.x());
+        float normalizedY = normalizeX(pos.y());
+
+        QVector3D vertex(normalizedX, normalizedY, 0);
+
+        emit drawMove(vertex);
     }
 
     QWindow::mouseMoveEvent(event);

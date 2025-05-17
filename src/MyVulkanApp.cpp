@@ -17,13 +17,14 @@ float degressToRadians(float degress)
 
 struct GlobalUbo
 {
-    float projectionViewMartix[16];
+    float projectionViewMartix[16];     //QMartix4x4 封装了一个flag进去，导致大小是68字节，不能直接传，改为float[16]
     QVector3D color = { 1,0,0 };
 };
 
 MyVulkanApp::MyVulkanApp() :
     m_window(m_widget.getVulkanWindowHandle()),
     m_cameraObject(Object::createObject()),
+    m_previewObject(Object::createObject()),
     m_keyBoardController(m_cameraObject, m_camera),
     m_mouseController(m_cameraObject, m_camera),
     m_device(m_window),
@@ -74,6 +75,10 @@ MyVulkanApp::MyVulkanApp() :
         m_renderer.getSwapChainRenderPass(),
         m_globalSetLayout->getDescriptorSetLayout());
 
+
+    connect(&m_window, &MyVulkanWindow::drawAddVertex, this, &MyVulkanApp::onAddDrawVertex);
+    connect(&m_window, &MyVulkanWindow::drawEnd, this, &MyVulkanApp::onDrawEnd);
+    connect(&m_window, &MyVulkanWindow::drawMove, this, &MyVulkanApp::onDrawMove);
 }
 
 MyVulkanApp::~MyVulkanApp()
@@ -207,6 +212,29 @@ std::shared_ptr<Model> createCubeMode(Device& device, QVector3D offset)
         v.position += offset;
     }
     return std::make_shared<Model>(device, modelBuilder);
+}
+
+void MyVulkanApp::onAddDrawVertex(QVector3D vertexPos)
+{
+    DrawMode mode = m_window.getCurrentDrawMode();
+    switch (mode)
+    {
+    case DrawMode::Point:
+    Model::Builder modelBuilder;
+    Model::Vertex vertex;
+    vertex.position = vertexPos;
+    vertex.color = { 1,0,0 };
+    modelBuilder.vertices.push_back(vertex);
+    }
+}
+
+void MyVulkanApp::onDrawEnd()
+{
+}
+
+void MyVulkanApp::onDrawMove(QVector3D location)
+{
+
 }
 
 //TODO: 设置可以手绘物体

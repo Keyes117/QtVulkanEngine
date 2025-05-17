@@ -6,6 +6,7 @@
 #include <qvector2d.h>
 #include <vector>
 
+
 class Model
 {
 public:

@@ -13,13 +13,14 @@
 #include "RenderSystem.h"
 #include "SwapChain.h"
 
+#include "qobject.h"
 
 #include <chrono>
 #include <memory>
 #include <vector>
 
 
-class MyVulkanApp
+class MyVulkanApp : public QObject
 {
 public:
     MyVulkanApp();
@@ -35,6 +36,11 @@ public:
     void run();
 
     std::shared_ptr<RenderSystem> getRenderSystem() { return m_renderSystem; }
+private slots:
+    void onAddDrawVertex(QVector3D vertexPos);
+    void onDrawEnd();
+    void onDrawMove(QVector3D location);
+
 private:
     void loadObjects();
 
@@ -47,11 +53,13 @@ private:
     Mouse_Movement_Controller                               m_mouseController;
 
     Object                                                  m_cameraObject;
+    Object                                                  m_previewObject;
     Camera                                                  m_camera;               //相机类
     Device                                                  m_device;               //负责初始化Vulkan基础组件
     Renderer                                                m_renderer;             //swapchain 和 commandbuffer
     std::shared_ptr<RenderSystem>                           m_renderSystem;         //pipeline 和 pipelineLayout
     std::vector<Object>                                     m_objects;              // 绘画对象
+
 
     std::unique_ptr<DescriptorPool>                         m_globalPool{};
     std::unique_ptr<DescriptorSetLayout>                    m_globalSetLayout;

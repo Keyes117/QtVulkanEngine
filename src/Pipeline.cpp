@@ -141,7 +141,6 @@ void Pipeline::createGraphicPipeline(const Device& device,
     auto vertCode = readFile(vertFilePath);
     auto  fragCode = readFile(fragFilePath);
 
-
     createShaderModule(vertCode, &m_vertShaderModule);
     createShaderModule(fragCode, &m_fragShaderModule);
 

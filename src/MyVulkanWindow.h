@@ -18,6 +18,7 @@ enum class DrawMode
     Polygon
 };
 
+
 class MyVulkanWindow : public QWindow
 {
     Q_OBJECT
@@ -33,7 +34,7 @@ public:
 
     bool isWidthResized() { return m_framebufferResized; }
     void resetWindowResizedFlag() { m_framebufferResized = false; }
-
+    DrawMode getCurrentDrawMode() { return m_drawMode; }
 
     int width() { return m_width; }
     int height() { return m_height; }
@@ -43,6 +44,9 @@ signals:
     void keyPressed(int key, Qt::KeyboardModifiers mods);
     void CameraMovement(QVector3D vector);
     void CameraZoom(QVector3D ndcAndSteps);
+    void drawAddVertex(QVector3D vertex);
+    void drawEnd();
+    void drawMove(QVector3D location);
 
 public slots:
     void setDrawNone() { m_drawMode = DrawMode::None; }
@@ -59,6 +63,11 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     void exposeEvent(QExposeEvent* event) override;
     bool event(QEvent* event) override;
+
+private:
+    float normalizeX(float x) { return 2.0f * x / m_width - 1.0f; }
+    float normalizeY(float y) { return 2.0f * y / m_width - 1.0f; }
+
 
 private:
     int m_width{ 800 };

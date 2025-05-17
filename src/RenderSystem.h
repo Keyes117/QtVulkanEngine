@@ -34,6 +34,7 @@ private:
 private:
     Device& m_device;
 
+
     std::unique_ptr<Pipeline>       m_pipeline;
     VkPipelineLayout                m_pipelineLayout;
 

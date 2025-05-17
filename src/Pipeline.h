@@ -42,6 +42,9 @@ public:
     void bind(VkCommandBuffer commandBuffer);
 
     static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static void pointPipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static void linePipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static void polygonPipelineConfigInfo(PipelineConfigInfo& confiInfo);
 
 private:
     static std::vector<char> readFile(const std::string& filePath);
