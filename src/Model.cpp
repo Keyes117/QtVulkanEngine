@@ -11,6 +11,7 @@ Model::Model(Device& device, const Model::Builder& builder)
 
 Model::~Model()
 {
+
 }
 
 void Model::draw(VkCommandBuffer commandBuffer)

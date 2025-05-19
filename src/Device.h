@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+
+
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -79,6 +81,8 @@ private:
     void pickPhysicalDevice();
     void createLogicalDevice();
     void createCommandPool();
+
+    void initVulkanProfiler();
 
     // helper functions
     bool isDeviceSuitable(VkPhysicalDevice device);

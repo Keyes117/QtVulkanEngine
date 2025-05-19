@@ -14,7 +14,10 @@
 class RenderSystem
 {
 public:
-    RenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+    RenderSystem(Device& device,
+        VkRenderPass renderPass,
+        VkDescriptorSetLayout globalSetLayout,
+        VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     ~RenderSystem();
 
 
@@ -28,7 +31,7 @@ public:
 
 private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-    void createPipeline(VkRenderPass renderPass);
+    void createPipeline(VkRenderPass renderPass, VkPrimitiveTopology topology);
 
 
 private:

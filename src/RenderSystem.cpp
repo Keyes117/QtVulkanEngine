@@ -6,11 +6,14 @@
 
 
 
-RenderSystem::RenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
+RenderSystem::RenderSystem(Device& device,
+    VkRenderPass renderPass,
+    VkDescriptorSetLayout globalSetLayout,
+    VkPrimitiveTopology topology /*= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST*/)
     :m_device(device)
 {
     createPipelineLayout(globalSetLayout);
-    createPipeline(renderPass);
+    createPipeline(renderPass, topology);
 }
 
 RenderSystem::~RenderSystem()
@@ -40,12 +43,12 @@ void RenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
     }
 }
 
-void RenderSystem::createPipeline(VkRenderPass renderPass)
+void RenderSystem::createPipeline(VkRenderPass renderPass, VkPrimitiveTopology topology)
 {
     assert(m_pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout");
 
     PipelineConfigInfo pipelineConfigInfo{};
-    Pipeline::defaultPipelineConfigInfo(pipelineConfigInfo);
+    Pipeline::setPipelineConfigInfo(pipelineConfigInfo);
 
     pipelineConfigInfo.renderPass = renderPass;
     pipelineConfigInfo.pipelineLayout = m_pipelineLayout;

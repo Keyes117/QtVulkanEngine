@@ -44,7 +44,6 @@ private:
 private:
     Device& m_device;
 
-
     std::unique_ptr<Buffer>     m_vertexBuffer;
     uint32_t                    m_vertexCount;
 

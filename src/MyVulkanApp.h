@@ -15,10 +15,12 @@
 
 #include "qobject.h"
 
+
 #include <chrono>
 #include <memory>
 #include <vector>
 
+#include <ogrsf_frmts.h>
 
 class MyVulkanApp : public QObject
 {
@@ -35,7 +37,7 @@ public:
 
     void run();
 
-    std::shared_ptr<RenderSystem> getRenderSystem() { return m_renderSystem; }
+    //std::shared_ptr<RenderSystem> getRenderSystem() { return m_renderSystem; }
 private slots:
     void onAddDrawVertex(QVector3D vertexPos);
     void onDrawEnd();
@@ -43,8 +45,21 @@ private slots:
 
 private:
     void loadObjects();
+    void loadShpObjects(const std::string path);
+    void parseFeature(OGRGeometry* geom);
+    void computeGeoBounds(const std::string& path);
+    void updateBounds(OGRGeometry* geom);
+    Model::Vertex geoToNDC(double lon, double lat);
 
 private:
+
+    float                                                   m_minX = std::numeric_limits<float>::infinity();
+    float                                                   m_maxX = -std::numeric_limits<float>::infinity();
+    float                                                   m_minY = std::numeric_limits<float>::infinity();
+    float                                                   m_maxY = -std::numeric_limits<float>::infinity();
+
+
+    VkQueryPool                                             m_queryPool;
 
     std::chrono::high_resolution_clock::time_point          m_lastFrameTime;
     MyVulkanWidget                                          m_widget;               //窗口类，后续考虑跟window一样改成引用
@@ -56,10 +71,15 @@ private:
     Object                                                  m_previewObject;
     Camera                                                  m_camera;               //相机类
     Device                                                  m_device;               //负责初始化Vulkan基础组件
-    Renderer                                                m_renderer;             //swapchain 和 commandbuffer
-    std::shared_ptr<RenderSystem>                           m_renderSystem;         //pipeline 和 pipelineLayout
-    std::vector<Object>                                     m_objects;              // 绘画对象
+    Renderer                                                m_renderer;
+    //swapchain 和 commandbuffer
+    std::shared_ptr<RenderSystem>                           m_pointRenderSystem;         //pipeline 和 pipelineLayout
+    std::shared_ptr<RenderSystem>                           m_lineRenderSystem;
+    std::shared_ptr<RenderSystem>                           m_polygonRenderSystem;
 
+    std::vector<Object>                                     m_pointObjects;              // 绘画对象
+    std::vector<Object>                                     m_lineObjects;
+    std::vector<Object>                                     m_polygonObjects;
 
     std::unique_ptr<DescriptorPool>                         m_globalPool{};
     std::unique_ptr<DescriptorSetLayout>                    m_globalSetLayout;

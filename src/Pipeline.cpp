@@ -30,11 +30,11 @@ void Pipeline::bind(VkCommandBuffer commandBuffer)
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
 }
 
-void Pipeline::defaultPipelineConfigInfo(PipelineConfigInfo& configInfo)
+void Pipeline::setPipelineConfigInfo(PipelineConfigInfo& configInfo, VkPrimitiveTopology topology)
 {
 
     configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    configInfo.inputAssemblyInfo.topology = topology;
     configInfo.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
 

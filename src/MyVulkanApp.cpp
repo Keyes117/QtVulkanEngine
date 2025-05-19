@@ -7,6 +7,8 @@
 #include "Buffer.h"
 #include "Movement_Controller.h"
 
+
+
 constexpr float MAX_FRAME_TIME = 0.001;
 
 float degressToRadians(float degress)
@@ -17,7 +19,7 @@ float degressToRadians(float degress)
 
 struct GlobalUbo
 {
-    float projectionViewMartix[16];     //QMartix4x4 封装了一个flag进去，导致大小是68字节，不能直接传，改为float[16]
+    float projectionViewMartix[16];     //QMartix4x4 灏佽浜嗕竴涓猣lag杩涘幓锛屽鑷村ぇ灏忔槸68瀛楄妭锛屼笉鑳界洿鎺ヤ紶锛屾敼涓篺loat[16]
     QVector3D color = { 1,0,0 };
 };
 
@@ -71,10 +73,26 @@ MyVulkanApp::MyVulkanApp() :
             .build(m_globalDescriptSets[i]);
     }
 
-    m_renderSystem = std::make_unique<RenderSystem>(m_device,
-        m_renderer.getSwapChainRenderPass(),
-        m_globalSetLayout->getDescriptorSetLayout());
+    VkQueryPoolCreateInfo queryPoolInfo{};
+    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolInfo.queryCount = 2;
+    vkCreateQueryPool(m_device.device(), &queryPoolInfo, nullptr, &m_queryPool);
 
+    m_pointRenderSystem = std::make_shared<RenderSystem>(m_device,
+        m_renderer.getSwapChainRenderPass(),
+        m_globalSetLayout->getDescriptorSetLayout(),
+        VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+
+    m_lineRenderSystem = std::make_shared<RenderSystem>(m_device,
+        m_renderer.getSwapChainRenderPass(),
+        m_globalSetLayout->getDescriptorSetLayout(),
+        VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+
+    m_polygonRenderSystem = std::make_shared<RenderSystem>(m_device,
+        m_renderer.getSwapChainRenderPass(),
+        m_globalSetLayout->getDescriptorSetLayout(),
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
     connect(&m_window, &MyVulkanWindow::drawAddVertex, this, &MyVulkanApp::onAddDrawVertex);
     connect(&m_window, &MyVulkanWindow::drawEnd, this, &MyVulkanApp::onDrawEnd);
@@ -102,7 +120,7 @@ void MyVulkanApp::run()
             float aspect = m_renderer.getAspectRatio();
             m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 200.f);
 
-            //TODO:检查这里的帧时间的问题，好像MAX_FRAME_TIME 会失效？
+            //TODO:妫�鏌ヨ繖閲岀殑甯ф椂闂寸殑闂锛屽ソ鍍廙AX_FRAME_TIME 浼氬け鏁堬紵
             auto newTime = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - m_lastFrameTime).count();
             m_lastFrameTime = newTime;
@@ -127,6 +145,9 @@ void MyVulkanApp::run()
             if (auto commandBuffer = m_renderer.beginFrame())
             {
                 //update
+                vkCmdResetQueryPool(commandBuffer, m_queryPool, 0, 2);
+                vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_queryPool, 0);
+
                 int frameIndex = m_renderer.getFrameIndex();
                 FrameInfo frameInfo{
                     frameIndex,
@@ -145,9 +166,16 @@ void MyVulkanApp::run()
 
                 //render
                 m_renderer.beginSwapChainRenderPass(commandBuffer);
-                this->getRenderSystem()->renderObjects(frameInfo, m_objects);
+
+                m_pointRenderSystem->renderObjects(frameInfo, m_pointObjects);
+                m_lineRenderSystem->renderObjects(frameInfo, m_lineObjects);
+                m_polygonRenderSystem->renderObjects(frameInfo, m_polygonObjects);
+
                 m_renderer.endSwapChainRenderPass(commandBuffer);
                 m_renderer.endFrame();
+
+
+                vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 1);
             }
             m_window.requestUpdate();
         });
@@ -237,39 +265,146 @@ void MyVulkanApp::onDrawMove(QVector3D location)
 
 }
 
-//TODO: 设置可以手绘物体
+//TODO: 璁剧疆鍙互鎵嬬粯鐗╀綋
 void MyVulkanApp::loadObjects()
 {
-    Model::Builder modelBuidler;
-    modelBuidler.vertices = std::vector<Model::Vertex>{
-        {{0.0f, -0.5f,  0.f}, {1.0f, 0.0f, 0.0f}}, // Triangle 1, vertex 1
-        {{0.5f, 0.5f,   0.f}, {0.0f, 1.0f, 0.0f}},  // Triangle 1, vertex 2
-        {{-0.5f, 0.5f,  0.f}, {0.0f, 0.0f, 1.0f}}, // Triangle 1, vertex 3
-        //{{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f}}, // Triangle 2, vertex 1 (shared with triangle 1)
-    };
 
+    std::string strPath = "E:\\浜戝崡娴嬭瘯鏁版嵁\\00鏅椽甯傚湡鍦版壙鍖呯粡钀ユ潈\\532801鏅椽甯俖姹熷寳\\1.鐭㈤噺绌洪棿鏁版嵁\\缁熶竴鍧愭爣\\532801CBJYQZD_GD.shp";
+    computeGeoBounds(strPath);
+    loadShpObjects(strPath);
 
-    //modelBuidler.indices = { 0,1,2 };
-    auto model = std::make_shared<Model>(m_device, modelBuidler);
+}
 
-    auto triangle = Object::createObject();
-    triangle.m_model = model;
-    triangle.m_color = { .1f, .8f , .1f };
-    ///
-    //triangle.m_transform.scale = { .2f ,1.f ,.0f };
-    //triangle.m_transform.rotation = { .0f,.0f,.25f * M_PI };
-    triangle.m_transform.translation = { 0.f, .0f , 2.5f };
+void MyVulkanApp::loadShpObjects(const std::string path)
+{
+    GDALAllRegister();
+    std::unique_ptr<GDALDataset> ds(static_cast<GDALDataset*>(
+        GDALOpenEx(path.c_str(),
+            GDAL_OF_VECTOR,
+            nullptr,
+            nullptr,
+            nullptr)));
 
-    m_objects.push_back(std::move(triangle));
+    if (!ds)
+    {
+        std::runtime_error("failed to open shapefile");
+    }
 
-    //auto model = createCubeMode(m_device, QVector3D{ 0.f,0.f,0.f });
+    auto layer = ds->GetLayer(0);
+    layer->ResetReading();
+    OGRFeature* feature;
+    while ((feature = layer->GetNextFeature()) != nullptr)
+    {
+        OGRGeometry* geom = feature->GetGeometryRef();
+        if (geom)
+            parseFeature(geom);
+        OGRFeature::DestroyFeature(feature);
+    }
+}
 
-    //auto cube = Object::createObject();
-    //cube.m_model = model;
-    //cube.m_transform.translation = { .0f,0.0f,2.5f };
-    //cube.m_transform.scale = { .5f,.5f,.5f };
+void MyVulkanApp::parseFeature(OGRGeometry* geom)
+{
+    auto geoType = geom->getGeometryType();
+    switch (geoType)
+    {
+    case wkbPoint:
+    {
+        auto p = geom->toPoint();
+        Model::Vertex vertex = geoToNDC(p->getX(), p->getY());
+        Model::Builder builder;
+        builder.vertices.push_back(vertex);
 
-    //m_objects.push_back(std::move(cube));
+        auto model = std::make_shared<Model>(m_device, builder);
 
+        auto point = Object::createObject();
+        point.m_model = model;
+        point.m_color = { 1,0,0 };
+        m_pointObjects.push_back(std::move(point));
+    }
+    break;
+    case wkbLineString:
+    {
+        Model::Builder builder;
+        auto lineString = geom->toLineString();
+
+        for (int i = 0; i < lineString->getNumPoints(); ++i)
+        {
+            builder.vertices.push_back(geoToNDC(lineString->getX(i), lineString->getY(i)));
+            if (i > 0)
+            {
+                builder.indices.push_back(i - 1);
+                builder.indices.push_back(i);
+            }
+        }
+
+        auto model = std::make_shared<Model>(m_device, builder);
+        auto line = Object::createObject();
+        line.m_model = model;
+        line.m_color = { 0,1,0 };
+        m_lineObjects.push_back(std::move(line));
+    }
+    break;
+    case wkbPolygon:
+    {
+        auto polygon = geom->toPolygon();
+        auto ring = polygon->getExteriorRing();
+        Model::Builder builder;
+
+        for (int i = 0; i < ring->getNumPoints(); ++i)
+        {
+            builder.vertices.push_back(geoToNDC(ring->getX(i), ring->getY(i)));
+        }
+
+        for (uint32_t i = 1; i + 1 < builder.vertices.size(); ++i)
+        {
+            builder.indices.push_back(0);
+            builder.indices.push_back(i);
+            builder.indices.push_back(i + 1);
+        }
+        auto model = std::make_shared<Model>(m_device, builder);
+
+        auto polyObj = Object::createObject();
+        polyObj.m_model = model;
+        polyObj.m_color = { 0,0,1 };
+        m_polygonObjects.push_back(std::move(polyObj));
+    }
+    break;
+    default:break;
+    }
+}
+
+void MyVulkanApp::computeGeoBounds(const std::string& path)
+{
+    GDALAllRegister();
+    std::unique_ptr<GDALDataset> ds(static_cast<GDALDataset*>(GDALOpenEx(path.c_str(), GDAL_OF_VECTOR, nullptr, nullptr, nullptr)));
+    if (!ds) throw std::runtime_error("failed to open shapefile");
+    auto layer = ds->GetLayer(0);
+    layer->ResetReading();
+    OGRFeature* feat;
+    while ((feat = layer->GetNextFeature()) != nullptr) {
+        OGRGeometry* geom = feat->GetGeometryRef();
+        if (geom) updateBounds(geom);
+        OGRFeature::DestroyFeature(feat);
+    }
+}
+
+void MyVulkanApp::updateBounds(OGRGeometry* geom)
+{
+    OGREnvelope env;
+    geom->getEnvelope(&env);
+    m_minX = m_minX < env.MinX ? m_minX : env.MinX;
+    m_minY = m_minY < env.MinY ? m_minY : env.MinY;
+    m_maxX = m_maxX > env.MaxX ? m_maxX : env.MaxX;
+    m_maxY = m_maxY > env.MaxY ? m_maxY : env.MaxY;
+}
+
+Model::Vertex MyVulkanApp::geoToNDC(double x, double y)
+{
+    float ndcX = float((x - m_minX) / (m_maxX - m_minX) * 2.0 - 1.0);
+    float ndcY = float((y - m_minY) / (m_maxY - m_minY) * 2.0 - 1.0);
+
+    Model::Vertex vertex;
+    vertex.position = QVector3D(ndcX, ndcY, 0);
+    return vertex;
 }
 
