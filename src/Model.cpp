@@ -1,12 +1,22 @@
 #include "Model.h"
 
 #include <cassert>
+#include <limits>
+
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
 
 Model::Model(Device& device, const Model::Builder& builder)
     :m_device{ device }
 {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
+    buildChunks(builder);
 }
 
 Model::~Model()
@@ -14,17 +24,26 @@ Model::~Model()
 
 }
 
-void Model::draw(VkCommandBuffer commandBuffer)
+void Model::draw(VkCommandBuffer commandBuffer, const Camera& camera)
 {
-    if (m_hasIndexBuffer)
-    {
-        vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
-    }
-    else
+    if (!m_hasIndexBuffer)
     {
         vkCmdDraw(commandBuffer, m_vertexCount, 1, 0, 0);
     }
+    else
+    {
+        Camera::Frustum2D frustum2D = camera.getFrustum2D();
+        for (const auto& chunk : m_chunks)
+        {
 
+            if (!frustum2D.insersects(chunk.minXY, chunk.maxXY))
+                continue;
+
+            vkCmdDrawIndexed(commandBuffer, chunk.indexCount, 1, chunk.firstIndex, 0, 0);
+
+        }
+
+    }
 }
 
 void Model::bind(VkCommandBuffer commandBuffer)
@@ -61,7 +80,7 @@ void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
         m_device,
         vertexSize,
         m_vertexCount,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
 
@@ -95,11 +114,47 @@ void Model::createIndexBuffers(const std::vector<uint32_t>& indices)
         m_device,
         indexSize,
         m_indexCount,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
 
     m_device.copyBuffer(stagingBuffer.getBuffer(), m_indexBuffer->getBuffer(), bufferSize);
+}
+
+void Model::buildChunks(const Model::Builder& builder)
+{
+    const uint32_t CHUNK_SIZE = 50000;
+    m_chunks.clear();
+
+    for (uint32_t off = 0; off < m_indexCount; off += CHUNK_SIZE)
+    {
+        Model::Chunk chunk;
+        chunk.firstIndex = off;
+        auto n = m_indexCount - off;
+        chunk.indexCount = CHUNK_SIZE < n ? CHUNK_SIZE : n;
+
+        //计算这一块2D 的AABB
+        QVector2D mn(std::numeric_limits<float>::max(),
+            std::numeric_limits<float>::max());
+        QVector2D mx(std::numeric_limits<float>::lowest(),
+            std::numeric_limits<float>::lowest());
+
+
+        for (uint32_t i = 0; i < chunk.indexCount; i++)
+        {
+            uint32_t vid = builder.indices[off + i];
+            const QVector3D& p = builder.vertices[vid].position;
+            mn.setX(qMin(mn.x(), p.x()));
+            mn.setY(qMin(mn.y(), p.y()));
+            mx.setX(qMax(mx.x(), p.x()));
+            mx.setY(qMax(mx.y(), p.y()));
+        }
+
+        chunk.minXY = mn;
+        chunk.maxXY = mx;
+        m_chunks.push_back(chunk);
+    }
+
 }
 
 std::vector<VkVertexInputBindingDescription> Model::Vertex::getBindingDescription()

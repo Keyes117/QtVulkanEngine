@@ -27,7 +27,7 @@ public:
     //RenderSystem(RenderSystem&&) = delete;
     //RenderSystem& operator=(RenderSystem&&) = delete;
 
-    void renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects);
+    void renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects, const Camera& camera);
 
 private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

@@ -48,7 +48,7 @@ void RenderSystem::createPipeline(VkRenderPass renderPass, VkPrimitiveTopology t
     assert(m_pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout");
 
     PipelineConfigInfo pipelineConfigInfo{};
-    Pipeline::setPipelineConfigInfo(pipelineConfigInfo);
+    Pipeline::setPipelineConfigInfo(pipelineConfigInfo, topology);
 
     pipelineConfigInfo.renderPass = renderPass;
     pipelineConfigInfo.pipelineLayout = m_pipelineLayout;
@@ -60,7 +60,7 @@ void RenderSystem::createPipeline(VkRenderPass renderPass, VkPrimitiveTopology t
     );
 }
 
-void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects)
+void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects, const Camera& camera)
 {
     m_pipeline->bind(frameInfo.commandBuffer);
 
@@ -90,7 +90,7 @@ void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& obje
             sizeof(SimplePushConstantData),
             &push);
         obj.m_model->bind(frameInfo.commandBuffer);
-        obj.m_model->draw(frameInfo.commandBuffer);
+        obj.m_model->draw(frameInfo.commandBuffer, camera);
     }
 }
 

@@ -65,6 +65,8 @@
     <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutDir>$(SolutionDir)bin\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -78,6 +80,19 @@
     <PreBuildEvent>
       <Command>glslc $(SolutionDir)shader\simple_shader.vert  -o  $(SolutionDir)bin\Debug\simple_shader.vert.spv
 glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simple_shader.frag.spv</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>glslc $(SolutionDir)shader\simple_shader.vert  -o  $(SolutionDir)bin\$(Configuration)\simple_shader.vert.spv
+glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configuration)\simple_shader.frag.spv</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">

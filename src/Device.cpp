@@ -6,7 +6,6 @@
 #include <set>
 #include <unordered_set>
 
-#include <vulkan/vulkan_profiles.hpp>
 
 // local callback functions
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -81,7 +80,6 @@ void Device::createInstance() {
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
-
 
 
     VkInstanceCreateInfo createInfo = {};

@@ -46,6 +46,7 @@ public:
     VkSurfaceKHR surface() { return m_VkSurface; }
     VkQueue graphicsQueue() { return m_graphicsQueue; }
     VkQueue presentQueue() { return m_presentQueue; }
+    VkPhysicalDevice physicalDevice() { return m_physicalDevice; }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(m_physicalDevice); }
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

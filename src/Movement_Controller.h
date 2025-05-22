@@ -13,7 +13,7 @@ public:
     void moveInPlane(int QtKey, float dt);
 
 private:
-    float moveSpeed{ 0.3f };
+    float moveSpeed{ 0.1f };
     Object& m_object;
     Camera& m_camera;
 };
@@ -28,7 +28,7 @@ public:
 
 private:
 
-    float moveSpeed{ 0.5f };
+    float moveSpeed{ 0.1f };
     Object& m_object;
     Camera& m_camera;
 };

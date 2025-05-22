@@ -143,7 +143,7 @@ void MyVulkanWindow::mouseMoveEvent(QMouseEvent* event)
 void MyVulkanWindow::wheelEvent(QWheelEvent* event)
 {
     int deltaY = event->angleDelta().y();
-    qDebug() << deltaY;
+    //qDebug() << deltaY;
 
     float numSteps = deltaY / 120.0f;
 
@@ -153,8 +153,8 @@ void MyVulkanWindow::wheelEvent(QWheelEvent* event)
     float normalizedX = 2.0f * pos.x() / m_width - 1.0f;
     float normalizedY = 2.0f * pos.y() / m_height - 1.0f;
 
-    qDebug() << pos.x() << "," << pos.y();
-    qDebug() << normalizedX << "," << normalizedY;
+    //qDebug() << pos.x() << "," << pos.y();
+    //qDebug() << normalizedX << "," << normalizedY;
 
     QVector3D zVector{ normalizedX,normalizedY,numSteps };
     emit CameraZoom(zVector);

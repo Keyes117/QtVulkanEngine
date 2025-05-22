@@ -101,3 +101,33 @@ void Camera::setViewLocation(QVector3D position, QVector3D rotation)
     m_viewMatrix(2, 3) = -QVector3D::dotProduct(w, position);
 
 }
+
+Camera::Frustum2D Camera::getFrustum2D() const
+{
+    QMatrix4x4 M = m_projectionMartrix * m_viewMatrix;
+    Frustum2D f;
+
+
+    auto extractPlane = [&](int rowA, int rowB, bool plus, Plane2D& pl)
+        {
+            // plane = M[3] ± M[row]
+            float a = M(rowA, 0) * (plus ? 1 : -1) + M(3, 0);
+            float b = M(rowA, 1) * (plus ? 1 : -1) + M(3, 1);
+            float c = M(rowA, 3) * (plus ? 1 : -1) + M(3, 3);
+            float invLen = 1.0f / qSqrt(a * a + b * b);
+            pl.a = a * invLen;
+            pl.b = b * invLen;
+            pl.c = c * invLen;
+        };
+
+    // 左平面:  M[3] + M[0]
+    extractPlane(0, 3, true, f.planes[0]);
+    // 右平面:  M[3] - M[0]
+    extractPlane(0, 3, false, f.planes[1]);
+    // 底平面:  M[3] + M[1]
+    extractPlane(1, 3, true, f.planes[2]);
+    // 顶平面:  M[3] - M[1]
+    extractPlane(1, 3, false, f.planes[3]);
+
+    return f;
+}
