@@ -12,11 +12,13 @@
 #endif
 
 Model::Model(Device& device, const Model::Builder& builder)
-    :m_device{ device }
+    :m_device{ device },
+    m_type(builder.type)
 {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
-    buildChunks(builder);
+
+    //buildChunks(builder);
 }
 
 Model::~Model()
@@ -61,7 +63,7 @@ void Model::bind(VkCommandBuffer commandBuffer)
 void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
 {
     m_vertexCount = static_cast<uint32_t>(vertices.size());
-    assert(m_vertexCount >= 3 && "Vertex Count must be at lease 3");
+    //assert(m_vertexCount >= 3 && "Vertex Count must be at lease 3");
     VkDeviceSize bufferSize = sizeof(vertices[0]) * m_vertexCount;
 
     uint32_t vertexSize = sizeof(vertices[0]);
@@ -133,7 +135,7 @@ void Model::buildChunks(const Model::Builder& builder)
         auto n = m_indexCount - off;
         chunk.indexCount = CHUNK_SIZE < n ? CHUNK_SIZE : n;
 
-        //¼ÆËãÕâÒ»¿é2D µÄAABB
+        //è®¡ç®—è¿™ä¸€å—2D çš„AABB
         QVector2D mn(std::numeric_limits<float>::max(),
             std::numeric_limits<float>::max());
         QVector2D mx(std::numeric_limits<float>::lowest(),

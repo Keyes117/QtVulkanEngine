@@ -7,10 +7,17 @@
 #include <qvector2d.h>
 #include <vector>
 
+enum class ModelType
+{
+    Point = 0,
+    Line,
+    Polygon
+};
 
 class Model
 {
 public:
+
     struct Vertex
     {
         QVector3D position{};
@@ -24,6 +31,7 @@ public:
     {
         std::vector<Vertex> vertices{};
         std::vector<uint32_t> indices{};
+        ModelType           type;
     };
 
     struct Chunk
@@ -39,6 +47,12 @@ public:
     void bind(VkCommandBuffer commandBuffer);
     void draw(VkCommandBuffer commandBuffer, const Camera& camera);
 
+    uint32_t  vertexCount()const { return m_vertexCount; }
+    uint32_t  indexCount() const { return m_indexCount; }
+    ModelType type() const { return m_type; }
+    const std::shared_ptr<Buffer>& getVertexBuffer() const { return m_vertexBuffer; }
+    const std::shared_ptr<Buffer>& getIndexBuffer() const { return m_indexBuffer; }
+
     // Not copyable or movable
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
@@ -47,17 +61,18 @@ public:
 private:
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     void createIndexBuffers(const std::vector<uint32_t>& indices);
-    void buildChunks(const Model::Builder& builder);
+    //void buildChunks(const Model::Builder& builder);
 private:
     Device& m_device;
 
-    std::vector<Model::Chunk>   m_chunks;
+    ModelType                   m_type;
+    //std::vector<Model::Chunk>   m_chunks;
 
-    std::unique_ptr<Buffer>     m_vertexBuffer;
+    std::shared_ptr<Buffer>     m_vertexBuffer;
     uint32_t                    m_vertexCount;
 
     bool                        m_hasIndexBuffer;
-    std::unique_ptr<Buffer>     m_indexBuffer;
+    std::shared_ptr<Buffer>     m_indexBuffer;
     uint32_t                    m_indexCount;
 };
 

@@ -174,7 +174,7 @@ void MyVulkanApp::run()
                 vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
 
                 //m_pointRenderSystem->renderObjects(frameInfo, m_pointObjects);
-                m_lineRenderSystem->renderObjects(frameInfo, m_lineObjects, m_camera);
+                //m_lineRenderSystem->renderObjects(frameInfo, m_lineObjects, m_camera);
                 //m_polygonRenderSystem->renderObjects(frameInfo, m_polygonObjects);
 
                 vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
@@ -333,18 +333,18 @@ void MyVulkanApp::loadShpObjects(const std::string path)
 
     }
 
-    for (int i = 0; i < m_builders.size(); i++)
-    {
-        auto geoModel = std::make_shared<Model>(m_device, m_builders[i]);
+    /*  for (int i = 0; i < m_builders.size(); i++)
+      {
+          auto geoModel = std::make_shared<Model>(m_device, m_builders[i]);
 
-        auto object = Object::createObject();
-        object.m_color = { 1,0,0 };
-        object.m_model = geoModel;
-        object.m_transform.translation = { 0.f,0.f,0.f };
+          auto object = Object::createObject();
+          object.m_color = { 1,0,0 };
+          object.m_model = geoModel;
+          object.m_transform.translation = { 0.f,0.f,0.f };
 
-        m_lineObjects.push_back(std::move(object));
+          m_lineObjects.push_back(std::move(object));
 
-    }
+      }*/
 }
 
 void MyVulkanApp::parseFeature(OGRGeometry* geom)
@@ -399,36 +399,32 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         for (int iLine = 0; iLine < mls->getNumGeometries(); ++iLine) {
             auto ls = mls->getGeometryRef(iLine)->toLineString();
             int nPts = ls->getNumPoints();
-            if (nPts < 2) continue;
+            if (nPts < 2)
+                continue;
 
-
-            if (m_builder.vertices.size() > MAX_VERTICES)
+            Model::Builder builder;
+            for (int i = 0; i < nPts; i++)
             {
-                m_builders.push_back(std::move(m_builder));
-                m_builder = Model::Builder();
-                m_builder.vertices.clear();
-                m_builder.indices.clear();
-            }
-
-            // 1) 记录本条线在顶点数组中的起始索引
-            uint32_t baseIndex = static_cast<uint32_t>(m_builder.vertices.size());
-
-            // 2) 把所有点（含 Z）转换到 NDC（如果你的 geoToNDC 支持 3D，可这样调用）
-            for (int i = 0; i < nPts; ++i) {
                 double x = ls->getX(i);
                 double y = ls->getY(i);
-                //double z = ls->getZ(i);  // 25D 的 Z 值
-                m_builder.vertices.push_back(geoToNDC(x, y));
+                builder.vertices.push_back(geoToNDC(x, y));
             }
 
-            // 3) 生成线段索引（LINE_LIST），每两个点连一条线
-            for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i) {
-                m_builder.indices.push_back(baseIndex + i);
-                m_builder.indices.push_back(baseIndex + i + 1);
+            for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i)
+            {
+                builder.indices.push_back(i);
+                builder.indices.push_back(i + 1);
             }
-            //m_builder.indices.push_back(std::numeric_limits<uint32_t>::max());
+            builder.indices.push_back(std::numeric_limits<uint32_t>::max());
 
+            auto geoModel = std::make_shared<Model>(m_device, builder);
 
+            auto object = Object::createObject();
+            object.m_color = { 1,0,0 };
+            object.m_model = geoModel;
+            object.m_transform.translation = { 0.f,0.f,0.f };
+
+            m_lineObjects.push_back(std::move(object));
         }
     }
     break;
@@ -438,9 +434,9 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         auto ring = polygon->getExteriorRing();
         auto nPts = ring->getNumPoints();
 
-        m_offset = static_cast<uint32_t>(m_builder.vertices.size());
+        //m_offset = static_cast<uint32_t>(m_builder.vertices.size());
 
-        for (int i = 0; i < nPts; ++i)
+   /*     for (int i = 0; i < nPts; ++i)
         {
             m_builder.vertices.push_back(geoToNDC(ring->getX(i), ring->getY(i)));
         }
@@ -452,7 +448,7 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
             m_builder.indices.push_back(m_offset + i);
             m_builder.indices.push_back(m_offset + i + 1);
 
-        }
+        }*/
 
     }
     break;

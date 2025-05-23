@@ -11,6 +11,7 @@
 #include "Pipeline.h"
 #include "Renderer.h"
 #include "RenderSystem.h"
+#include "Scene.h"
 #include "SwapChain.h"
 
 #include "qobject.h"
@@ -83,13 +84,10 @@ private:
     std::shared_ptr<RenderSystem>                           m_lineRenderSystem;
     std::shared_ptr<RenderSystem>                           m_polygonRenderSystem;
 
-    std::vector<Object>                                     m_pointObjects;              // ªÊª≠∂‘œÛ
-    std::vector<Object>                                     m_lineObjects;
-    std::vector<Object>                                     m_polygonObjects;
 
     uint32_t                                                m_offset;
-    Model::Builder                                          m_builder;
-    std::vector<Model::Builder>                             m_builders;
+    //Model::Builder                                          m_builder;
+    //std::vector<Model::Builder>                             m_builders;
 
 
     std::unique_ptr<DescriptorPool>                         m_globalPool{};
