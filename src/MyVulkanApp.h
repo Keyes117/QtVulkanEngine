@@ -84,6 +84,7 @@ private:
     std::shared_ptr<RenderSystem>                           m_lineRenderSystem;
     std::shared_ptr<RenderSystem>                           m_polygonRenderSystem;
 
+    Scene                                                   m_scene;
 
     uint32_t                                                m_offset;
     //Model::Builder                                          m_builder;

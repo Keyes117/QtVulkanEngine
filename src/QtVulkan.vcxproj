@@ -136,6 +136,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderSystem.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <QtRcc Include="QtVulkan.qrc" />
     <QtUic Include="MyVulkanWidget.ui" />
@@ -158,6 +159,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClInclude Include="Pipeline.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderSystem.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="SwapChain.h" />
     <QtMoc Include="MyVulkanWindow.h" />
   </ItemGroup>

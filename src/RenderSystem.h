@@ -8,6 +8,7 @@
 #include "Pipeline.h"
 #include "SwapChain.h"
 #include "FrameInfo.h"
+#include "Scene.h"
 #include <memory>
 #include <vector>
 
@@ -27,7 +28,7 @@ public:
     //RenderSystem(RenderSystem&&) = delete;
     //RenderSystem& operator=(RenderSystem&&) = delete;
 
-    void renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects, const Camera& camera);
+    void renderScene(FrameInfo& frameInfo, Scene& scene);
 
 private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
@@ -37,7 +38,7 @@ private:
 private:
     Device& m_device;
 
-
+    VkPrimitiveTopology             m_topology;
     std::unique_ptr<Pipeline>       m_pipeline;
     VkPipelineLayout                m_pipelineLayout;
 

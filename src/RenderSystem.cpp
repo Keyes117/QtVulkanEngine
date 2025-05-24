@@ -10,7 +10,8 @@ RenderSystem::RenderSystem(Device& device,
     VkRenderPass renderPass,
     VkDescriptorSetLayout globalSetLayout,
     VkPrimitiveTopology topology /*= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST*/)
-    :m_device(device)
+    :m_device(device),
+    m_topology(topology)
 {
     createPipelineLayout(globalSetLayout);
     createPipeline(renderPass, topology);
@@ -60,7 +61,7 @@ void RenderSystem::createPipeline(VkRenderPass renderPass, VkPrimitiveTopology t
     );
 }
 
-void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& objects, const Camera& camera)
+void RenderSystem::renderScene(FrameInfo& frameInfo, Scene& scene)
 {
     m_pipeline->bind(frameInfo.commandBuffer);
 
@@ -75,22 +76,28 @@ void RenderSystem::renderObjects(FrameInfo& frameInfo, std::vector<Object>& obje
         nullptr
     );
 
-    for (auto& obj : objects)
+
+
+    switch (m_topology)
     {
+    case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+    scene.drawPoints(frameInfo.commandBuffer, m_pipelineLayout);
+    break;
+    case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+    scene.drawLines(frameInfo.commandBuffer, m_pipelineLayout);
+    break;
+    case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+    scene.drawPolygons(frameInfo.commandBuffer, m_pipelineLayout);
+    break;
 
-        SimplePushConstantData push{};
-        push.color = obj.m_color;
-
-        push.modelMatrix = obj.m_transform.mat4f();
-        vkCmdPushConstants(
-            frameInfo.commandBuffer,
-            m_pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(SimplePushConstantData),
-            &push);
-        obj.m_model->bind(frameInfo.commandBuffer);
-        obj.m_model->draw(frameInfo.commandBuffer, camera);
     }
+
+    //for (auto& obj : objects)
+    //{
+
+
+    //    obj.m_model->bind(frameInfo.commandBuffer);
+    //    obj.m_model->draw(frameInfo.commandBuffer, camera);
+    //}
 }
 

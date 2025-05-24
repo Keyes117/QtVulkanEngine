@@ -12,6 +12,14 @@
 
 class Renderer
 {
+
+    struct Chunk
+    {
+        uint32_t        firstIndex;
+        uint32_t        indexCount;
+        QVector2D       minXY, maxXY;
+    };
+
 public:
     Renderer(MyVulkanWindow& window, Device& device);
     ~Renderer();

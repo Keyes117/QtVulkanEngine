@@ -32,7 +32,8 @@ MyVulkanApp::MyVulkanApp() :
     m_keyBoardController(m_cameraObject, m_camera),
     m_mouseController(m_cameraObject, m_camera),
     m_device(m_window),
-    m_renderer(m_window, m_device)
+    m_renderer(m_window, m_device),
+    m_scene(m_device)
 {
 
     createQueryPools();
@@ -173,9 +174,9 @@ void MyVulkanApp::run()
                 // 同时开启管线统计
                 vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
 
-                //m_pointRenderSystem->renderObjects(frameInfo, m_pointObjects);
-                //m_lineRenderSystem->renderObjects(frameInfo, m_lineObjects, m_camera);
-                //m_polygonRenderSystem->renderObjects(frameInfo, m_polygonObjects);
+                m_pointRenderSystem->renderScene(frameInfo, m_scene);
+                m_lineRenderSystem->renderScene(frameInfo, m_scene);
+                m_polygonRenderSystem->renderScene(frameInfo, m_scene);
 
                 vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
 
@@ -317,7 +318,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
     {
         std::runtime_error("failed to open shapefile");
     }
-    //int count = 0;
+    int count = 0;
     auto layer = ds->GetLayer(0);
     layer->ResetReading();
     OGRFeature* feature;
@@ -326,10 +327,10 @@ void MyVulkanApp::loadShpObjects(const std::string path)
         OGRGeometry* geom = feature->GetGeometryRef();
         if (geom)
             parseFeature(geom);
-        //count++;
+        count++;
         OGRFeature::DestroyFeature(feature);
-        //if (count == 100000)
-        //    break;
+        if (count == 100000)
+            break;
 
     }
 
@@ -359,6 +360,7 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         auto p = geom->toPoint();
         Model::Vertex vertex = geoToNDC(p->getX(), p->getY());
         Model::Builder builder;
+        builder.type = ModelType::Point;
         builder.vertices.push_back(vertex);
 
         auto model = std::make_shared<Model>(m_device, builder);
@@ -366,12 +368,13 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         auto point = Object::createObject();
         point.m_model = model;
         point.m_color = { 1,0,0 };
-        m_pointObjects.push_back(std::move(point));
+        m_scene.addObject(std::move(point));
     }
     break;
     case wkbLineString:
     {
         Model::Builder builder;
+        builder.type = ModelType::Line;
         auto lineString = geom->toLineString();
 
         for (int i = 0; i < lineString->getNumPoints(); ++i)
@@ -388,7 +391,7 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         auto line = Object::createObject();
         line.m_model = model;
         line.m_color = { 0,1,0 };
-        m_lineObjects.push_back(std::move(line));
+        m_scene.addObject(std::move(line));
     }
     break;
     case wkbMultiLineString25D:
@@ -403,6 +406,7 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
                 continue;
 
             Model::Builder builder;
+            builder.type = ModelType::Line;
             for (int i = 0; i < nPts; i++)
             {
                 double x = ls->getX(i);
@@ -424,7 +428,8 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
             object.m_model = geoModel;
             object.m_transform.translation = { 0.f,0.f,0.f };
 
-            m_lineObjects.push_back(std::move(object));
+            m_scene.addObject(std::move(object));
+            //m_lineObjects.push_back(std::move(object));
         }
     }
     break;

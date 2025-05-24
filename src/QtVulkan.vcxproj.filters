@@ -74,6 +74,9 @@
     <ClCompile Include="Descriptors.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -116,6 +119,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="Descriptors.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

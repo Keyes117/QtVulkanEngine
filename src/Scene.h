@@ -11,17 +11,19 @@ public:
     explicit Scene(Device& device);
     ~Scene() = default;
 
-    void draw(VkCommandBuffer commandBuffer);
-
     void addObject(Object&& object);
-    void removeObject(size_t index);
 
+    void drawPoints(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
+    void drawLines(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+
+    void drawPolygons(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
     //void buildChunks(const Model::Builder& builder);
 private:
-    void buildIndirectCommands();
-    void buildSingleIndirectCommands(const std::vector<Object>& objects, std::shared_ptr<Buffer>& buffer);
+    void updateIndirect(Object& objects,
+        std::vector<VkDrawIndirectCommand>& cmds,
+        std::shared_ptr<Buffer>& buf);
 private:
     Device& m_device;
     //std::vector<Model::Chunk>   m_chunks;
@@ -33,5 +35,11 @@ private:
     std::shared_ptr<Buffer>                                 m_pointIndirectBuffer;
     std::shared_ptr<Buffer>                                 m_lineIndirectBuffer;
     std::shared_ptr<Buffer>                                 m_polygonIndirectBuffer;
+
+    std::vector<VkDrawIndexedIndirectCommand>               m_pointCmd;
+    std::vector<VkDrawIndexedIndirectCommand>               m_lineCmd;
+    std::vector<VkDrawIndexedIndirectCommand>               m_polygonCmd;
+
+
 };
 
