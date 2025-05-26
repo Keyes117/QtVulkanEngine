@@ -111,8 +111,9 @@ VkResult SwapChain::submitCommandBuffers(const VkCommandBuffer* buffers, uint32_
     submitInfo.pSignalSemaphores = signalSemaphores;
 
     vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
-    if (vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) !=
-        VK_SUCCESS) {
+    auto res = vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]);
+    if (res != VK_SUCCESS)
+    {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 

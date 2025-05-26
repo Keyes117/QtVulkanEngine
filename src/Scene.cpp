@@ -1,25 +1,25 @@
 #include "Scene.h"
 #include "const.h"
 
+#include "qglobal.h"
 Scene::Scene(Device& device) :
     m_device(device)
 {
 
     VkDeviceSize cmdSize = sizeof(VkDrawIndexedIndirectCommand);
     uint32_t  initSize = 8;
-    auto usageFlags = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+
+
+    auto indirectUsageFlags = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    auto memFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-
+    auto indirectMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     m_pointIndirectBuffer = std::make_shared<Buffer>(
         m_device,
         cmdSize,
         initSize,
-        usageFlags,
-        memFlags,
+        indirectUsageFlags,
+        indirectMemFlags,
         0
     );
 
@@ -27,8 +27,8 @@ Scene::Scene(Device& device) :
         m_device,
         cmdSize,
         initSize,
-        usageFlags,
-        memFlags,
+        indirectUsageFlags,
+        indirectMemFlags,
         0
     );
 
@@ -36,12 +36,10 @@ Scene::Scene(Device& device) :
         m_device,
         cmdSize,
         initSize,
-        usageFlags,
-        memFlags,
+        indirectUsageFlags,
+        indirectMemFlags,
         0
     );
-
-
 
 }
 
@@ -55,61 +53,29 @@ void Scene::addObject(Object&& object)
     cmd.vertexOffset = 0;
     cmd.firstInstance = 0;
 
-    auto updateIndirect = [&](
-        std::vector<Object>& objects,
-        std::vector<VkDrawIndexedIndirectCommand>& cmds,
-        std::shared_ptr<Buffer>& buf)
-        {
-            objects.push_back(std::move(object));
-            cmds.push_back(cmd);
-            uint32_t count = static_cast<uint32_t>(cmds.size());
-            VkDeviceSize instanceSize = sizeof(VkDrawIndexedIndirectCommand);
-            VkDeviceSize totalSize = instanceSize * count;
-
-            uint32_t cap = buf->getInstanceCount();
-            if (count > cap)
-            {
-                //À©ÈÝ
-                uint32_t newCap = qMax(cap * 2, count);
-                auto newBuf = std::make_shared<Buffer>(
-                    m_device,
-                    instanceSize,
-                    newCap,
-                    VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    0);
-
-                newBuf->map(totalSize);
-                newBuf->writeToBuffer(cmds.data(), totalSize);
-                newBuf->flush(totalSize, 0);
-                newBuf->unmap();
-                buf = std::move(newBuf);
-            }
-            else
-            {
-                VkDeviceSize singleSize = sizeof(cmd);
-                VkDeviceSize offset = singleSize * (count - 1);
-
-                buf->map(singleSize, offset);
-                buf->writeToBuffer(&cmds.back(), singleSize, offset);
-                buf->flush(singleSize, offset);
-                buf->unmap();
-            }
-
-        };
-
     switch (object.m_model->type())
     {
     case ModelType::Point:
-    updateIndirect(m_pointObjects, m_pointCmd, m_pointIndirectBuffer);
+    {
+        m_pointObjects.push_back(std::move(object));
+        m_pointCmd.push_back(cmd);
+        updateIndrectBuffer(cmd, m_pointCmd, m_pointIndirectBuffer);
+
+    }
     break;
     case ModelType::Line:
-    updateIndirect(m_lineObjects, m_lineCmd, m_pointIndirectBuffer);
+    {
+        m_lineObjects.push_back(std::move(object));
+        m_lineCmd.push_back(cmd);
+        updateIndrectBuffer(cmd, m_lineCmd, m_lineIndirectBuffer);
+    }
     break;
     case ModelType::Polygon:
-    updateIndirect(m_polygonObjects, m_polygonCmd, m_polygonIndirectBuffer);
+    {
+        m_polygonObjects.push_back(std::move(object));
+        m_polygonCmd.push_back(cmd);
+        updateIndrectBuffer(cmd, m_polygonCmd, m_polygonIndirectBuffer);
+    }
     break;
     default:
     break;
@@ -217,10 +183,53 @@ void Scene::drawPolygons(VkCommandBuffer commandBuffer, VkPipelineLayout pipelin
     }
 }
 
-
-
-void Scene::updateIndirect(Object& objects, std::vector<VkDrawIndirectCommand>& cmds, std::shared_ptr<Buffer>& buf)
+void Scene::updateIndrectBuffer(VkDrawIndexedIndirectCommand& cmd,
+    std::vector<VkDrawIndexedIndirectCommand>& cmds,
+    std::shared_ptr<Buffer>& indircetBuf)
 {
 
+    uint32_t count = static_cast<uint32_t>(cmds.size());
+    VkDeviceSize instanceSize = sizeof(VkDrawIndexedIndirectCommand);
+    VkDeviceSize totalSize = instanceSize * count;
+    VkDeviceSize offset = instanceSize * (count - 1);
+
+    uint32_t cap = indircetBuf->getInstanceCount();
+    if (count > cap)
+    {
+        //À©ÈÝ
+        uint32_t newCap = qMax(cap * 2, count);
+        auto oldBuf = indircetBuf;
+        indircetBuf = std::make_shared<Buffer>(
+            m_device,
+            instanceSize,
+            newCap,
+            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            0);
+
+        m_device.copyBuffer(oldBuf->getBuffer(), indircetBuf->getBuffer(), cap * instanceSize);
+
+    }
+
+    Buffer stagingBuffer(
+        m_device,
+        instanceSize,
+        1,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+
+    stagingBuffer.map();
+    stagingBuffer.writeToBuffer((void*)&cmd, instanceSize, 0);
+    stagingBuffer.flush(instanceSize, /*offset=*/0);
+    stagingBuffer.unmap();
+
+    VkBufferCopy copyRegion{ 0, offset, instanceSize };
+    m_device.copyBufferWithInfo(stagingBuffer.getBuffer(), indircetBuf->getBuffer(), copyRegion);
+
+
 }
+
+
 

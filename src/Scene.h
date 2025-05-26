@@ -19,14 +19,13 @@ public:
 
     void drawPolygons(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
-    //void buildChunks(const Model::Builder& builder);
 private:
-    void updateIndirect(Object& objects,
-        std::vector<VkDrawIndirectCommand>& cmds,
-        std::shared_ptr<Buffer>& buf);
+    void updateIndrectBuffer(VkDrawIndexedIndirectCommand& cmd,
+        std::vector<VkDrawIndexedIndirectCommand>& cmds,
+        std::shared_ptr<Buffer>& indircetBuf);
+
 private:
     Device& m_device;
-    //std::vector<Model::Chunk>   m_chunks;
 
     std::vector<Object>                                     m_pointObjects;              // ªÊª≠∂‘œÛ
     std::vector<Object>                                     m_lineObjects;

@@ -17,6 +17,8 @@ public:
 
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
+    Buffer(Buffer&&) = default;
+    Buffer& operator=(Buffer&&) = default;
 
     VkResult map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
     void unmap();

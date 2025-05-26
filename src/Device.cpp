@@ -13,7 +13,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    qDebug() << QString().asprintf("validation layer: %s", pCallbackData->pMessage);
 
     return VK_FALSE;
 }
@@ -508,6 +508,15 @@ void Device::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize siz
     copyRegion.dstOffset = 0;  // Optional
     copyRegion.size = size;
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    endSingleTimeCommands(commandBuffer);
+}
+
+void Device::copyBufferWithInfo(VkBuffer srcBuffer, VkBuffer dstBuffer, VkBufferCopy copyInfo)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyInfo);
 
     endSingleTimeCommands(commandBuffer);
 }

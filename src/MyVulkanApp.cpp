@@ -329,7 +329,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
             parseFeature(geom);
         count++;
         OGRFeature::DestroyFeature(feature);
-        if (count == 100000)
+        if (count == 10000)
             break;
 
     }
@@ -494,8 +494,8 @@ void MyVulkanApp::updateBounds(OGRGeometry* geom)
 
 Model::Vertex MyVulkanApp::geoToNDC(double x, double y)
 {
-    float ndcX = 100 * float((x - m_minX) / (m_maxX - m_minX) * 2.0 - 1.0);
-    float ndcY = -100 * float((y - m_minY) / (m_maxY - m_minY) * 2.0 - 1.0);
+    float ndcX = float((x - m_minX) / (m_maxX - m_minX) * 2.0 - 1.0);
+    float ndcY = -float((y - m_minY) / (m_maxY - m_minY) * 2.0 - 1.0);
 
     static std::random_device rd;
     static std::mt19937       gen(rd());
@@ -543,7 +543,8 @@ void MyVulkanApp::readbackQueryResults()
     vkGetQueryPoolResults(
         m_device.device(),
         m_timestampQueryPool,
-        0, TIMESTAMP_QUERIES,
+        0,
+        TIMESTAMP_QUERIES,
         sizeof(timestamps), timestamps,
         sizeof(uint64_t),
         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
@@ -561,7 +562,8 @@ void MyVulkanApp::readbackQueryResults()
     vkGetQueryPoolResults(
         m_device.device(),
         m_statsQueryPool,
-        0, STATS_QUERIES,
+        0,
+        STATS_QUERIES,
         sizeof(stats), &stats,
         sizeof(uint64_t) * 2,
         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);

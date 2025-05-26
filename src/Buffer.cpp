@@ -66,7 +66,7 @@ void Buffer::writeToBuffer(void* data, VkDeviceSize size, VkDeviceSize offset)
     {
         char* memOffset = (char*)m_mapped;
         memOffset += offset;
-        memcpy(m_mapped, data, size);
+        memcpy(memOffset, data, size);
     }
 }
 
