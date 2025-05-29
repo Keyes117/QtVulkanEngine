@@ -2,24 +2,23 @@
 
 #include "Device.h"
 
-
-class  Buffer
+class VMABuffer
 {
 public:
-    Buffer(
+    VMABuffer(
         Device& device,
         VkDeviceSize  instanceSize,
         uint32_t    instanceCount,
         VkBufferUsageFlags  usageFlags,
-        VkMemoryPropertyFlags memoryPropertyFlags,
+        VmaMemoryUsage memoryPropertyFlags,
         VkDeviceSize minOffsetAlignment = 1);
-    ~Buffer();
+    ~VMABuffer();
 
 
-    Buffer(const Buffer&) = delete;
-    Buffer& operator=(const Buffer&) = delete;
-    Buffer(Buffer&&) = default;
-    Buffer& operator=(Buffer&&) = default;
+    VMABuffer(const VMABuffer&) = delete;
+    VMABuffer& operator=(const VMABuffer&) = delete;
+    VMABuffer(VMABuffer&&) = default;
+    VMABuffer& operator=(VMABuffer&&) = default;
 
     VkResult map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
     void unmap();
@@ -41,7 +40,7 @@ public:
     VkDeviceSize getInstanceSize() const { return m_instanceSize; }
     VkDeviceSize getAlignmentSize() const { return m_alignmentSize; }
     VkBufferUsageFlags getUsageFlags() const { return m_usageFlags; }
-    VkMemoryPropertyFlags getMemoryPropertyFlags() const { return m_memoryPropertyFlags; }
+    VmaAllocation getAllocation() const { return m_allocation; }
     VkDeviceSize getBufferSize() const { return m_bufferSize; }
 
 private:
@@ -51,13 +50,12 @@ private:
     void* m_mapped = nullptr;
 
     VkBuffer                    m_buffer = VK_NULL_HANDLE;
-    VkDeviceMemory              m_memory = VK_NULL_HANDLE;
 
     VkDeviceSize                m_bufferSize;
     uint32_t                    m_instanceCount;
     VkDeviceSize                m_instanceSize;
     VkDeviceSize                m_alignmentSize;
     VkBufferUsageFlags          m_usageFlags;
-    VkMemoryPropertyFlags       m_memoryPropertyFlags;
+    VmaAllocation               m_allocation;
 };
 

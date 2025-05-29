@@ -19,6 +19,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{1212c1da-897d-4a7e-8597-f78d087fd031}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vma">
+      <UniqueIdentifier>{42a1da5c-ea48-42ae-b817-694a31429a76}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="QtVulkan.qrc">
@@ -77,6 +80,15 @@
     <ClCompile Include="Scene.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="Layer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_mem_alloc.cpp">
+      <Filter>vma</Filter>
+    </ClCompile>
+    <ClCompile Include="VMABuffer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -122,6 +134,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="Layer.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="VMABuffer.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

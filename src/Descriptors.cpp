@@ -1,5 +1,7 @@
 #include "Descriptors.h"
 
+#include <stdexcept>
+#include <cassert>
 
 //************************ Decriptor Set Layout Builder ***********************************//
 DescriptorSetLayout::Builder&

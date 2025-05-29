@@ -1,4 +1,5 @@
 #include "Device.h"
+#include "MyVulkanWindow.h"
 
 // std headers
 #include <cstring>
@@ -54,9 +55,11 @@ Device::Device(MyVulkanWindow& window) : m_window{ window } {
     pickPhysicalDevice();
     createLogicalDevice();
     createCommandPool();
+    initVulkanMemAllocator();
 }
 
 Device::~Device() {
+    vmaDestroyAllocator(m_allocator);
     vkDestroyCommandPool(m_VkDevice, m_commandPool, nullptr);
     vkDestroyDevice(m_VkDevice, nullptr);
 
@@ -66,6 +69,7 @@ Device::~Device() {
 
     vkDestroySurfaceKHR(m_instance, m_VkSurface, nullptr);
     vkDestroyInstance(m_instance, nullptr);
+
 }
 
 void Device::createInstance() {
@@ -197,6 +201,18 @@ void Device::createCommandPool() {
     }
 }
 
+void Device::initVulkanMemAllocator()
+{
+    VmaAllocatorCreateInfo allocInfo = {};
+    allocInfo.physicalDevice = m_physicalDevice;
+    allocInfo.device = m_VkDevice;
+    allocInfo.instance = m_instance;
+    if (vmaCreateAllocator(&allocInfo, &m_allocator) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create WMA");
+    }
+}
+
 void Device::initVulkanProfiler()
 {
 
@@ -271,10 +287,10 @@ bool Device::checkValidationLayerSupport() {
 std::vector<const char*> Device::getRequiredExtensions() {
     std::vector<const char*> extensions;
 
-    //vulkan Surface通用平台扩展
+    //vulkan Surface通锟斤拷平台锟斤拷展
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
-    //Windows 平台用的 Win32 Surface
+    //Windows 平台锟矫碉拷 Win32 Surface
     extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
     if (enableValidationLayers)
@@ -443,6 +459,7 @@ void Device::createBuffer(
     VkMemoryPropertyFlags properties,
     VkBuffer& buffer,
     VkDeviceMemory& bufferMemory) {
+
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = size;
@@ -461,11 +478,39 @@ void Device::createBuffer(
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-    if (vkAllocateMemory(m_VkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+
+    auto res = vkAllocateMemory(m_VkDevice, &allocInfo, nullptr, &bufferMemory);
+    if (res != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate vertex buffer memory!");
     }
 
     vkBindBufferMemory(m_VkDevice, buffer, bufferMemory, 0);
+}
+
+void Device::createBufferVMA(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer,
+    VmaAllocation& allocation)
+{
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo allocCreateInfo{};
+    allocCreateInfo.usage = memoryUsage;
+    allocCreateInfo.requiredFlags = 0;
+    allocCreateInfo.preferredFlags = 0;
+
+    if (vmaCreateBuffer(m_allocator,
+        &bufferInfo,
+        &allocCreateInfo,
+        &buffer,
+        &allocation,
+        nullptr) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create buffer");
+    }
+
 }
 
 VkCommandBuffer Device::beginSingleTimeCommands() {

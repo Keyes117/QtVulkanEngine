@@ -7,11 +7,14 @@
 #include "Buffer.h"
 #include "Movement_Controller.h"
 
+#define EXPEND_100
+#define LIMIT
+
 
 #ifdef max
 #undef max
 #endif
-constexpr float MAX_FRAME_TIME = 0.01667;
+constexpr float MAX_FRAME_TIME = 0.01666666666;
 
 float degressToRadians(float degress)
 {
@@ -105,6 +108,11 @@ MyVulkanApp::~MyVulkanApp()
 
 void MyVulkanApp::run()
 {
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(m_device.physicalDevice(), &props);
+    VkDeviceSize maxBufferSize = props.limits.maxStorageBufferRange;
+    qDebug() << maxBufferSize;
+
     m_widget.resize(800, 600);
     m_widget.show();
 
@@ -137,9 +145,6 @@ void MyVulkanApp::run()
             QObject::connect(&m_window, &MyVulkanWindow::CameraZoom, [=](QVector3D ndcAndSteps) {
                 m_mouseController.zoom(ndcAndSteps, frameTime);
                 });
-
-
-
             //render
             if (auto commandBuffer = m_renderer.beginFrame())
             {
@@ -161,27 +166,24 @@ void MyVulkanApp::run()
 
                 GlobalUbo ubo{};
                 std::memcpy(&ubo.projectionViewMartix, metaData, 16 * sizeof(float));
-                m_spGlobalUboBuffers[frameIndex]->writeToIndex(&ubo, frameIndex);
-                m_spGlobalUboBuffers[frameIndex]->flushIndex(frameIndex);
+                m_spGlobalUboBuffers[frameIndex]->writeToIndex(&ubo, 0);
+                m_spGlobalUboBuffers[frameIndex]->flushIndex(0);
 
 
                 vkCmdWriteTimestamp(commandBuffer,
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                     m_timestampQueryPool, 0);
                 //render
+               // 同时开启管线统计
+                vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
                 m_renderer.beginSwapChainRenderPass(commandBuffer);
 
-                // 同时开启管线统计
-                vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
-
-                m_pointRenderSystem->renderScene(frameInfo, m_scene);
+                //m_pointRenderSystem->renderScene(frameInfo, m_scene);
                 m_lineRenderSystem->renderScene(frameInfo, m_scene);
-                m_polygonRenderSystem->renderScene(frameInfo, m_scene);
-
-                vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
+                //m_polygonRenderSystem->renderScene(frameInfo, m_scene);
 
                 m_renderer.endSwapChainRenderPass(commandBuffer);
-
+                vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
                 vkCmdWriteTimestamp(commandBuffer,
                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                     m_timestampQueryPool, 1);
@@ -193,66 +195,6 @@ void MyVulkanApp::run()
             m_window.requestUpdate();
         });
     return;
-}
-
-std::shared_ptr<Model> createCubeMode(Device& device, QVector3D offset)
-{
-    Model::Builder modelBuilder;
-
-    modelBuilder.vertices = {
-        // left face (white)
-             { { -.5f, -.5f, -.5f }, { .9f, .9f, .9f } },
-             { {-.5f, .5f, .5f}, {.9f, .9f, .9f} },
-             { {-.5f, -.5f, .5f}, {.9f, .9f, .9f} },
-             { {-.5f, -.5f, -.5f}, {.9f, .9f, .9f} },
-             { {-.5f, .5f, -.5f}, {.9f, .9f, .9f} },
-             { {-.5f, .5f, .5f}, {.9f, .9f, .9f} },
-
-             // right face (yellow)
-         { {.5f, -.5f, -.5f}, {.8f, .8f, .1f} },
-         { {.5f, .5f, .5f}, {.8f, .8f, .1f} },
-         { {.5f, -.5f, .5f}, {.8f, .8f, .1f} },
-         { {.5f, -.5f, -.5f}, {.8f, .8f, .1f} },
-         { {.5f, .5f, -.5f}, {.8f, .8f, .1f} },
-         { {.5f, .5f, .5f}, {.8f, .8f, .1f} },
-
-         // top face (orange, remember y axis points down)
-     { {-.5f, -.5f, -.5f}, {.9f, .6f, .1f} },
-     { {.5f, -.5f, .5f}, {.9f, .6f, .1f} },
-     { {-.5f, -.5f, .5f}, {.9f, .6f, .1f} },
-     { {-.5f, -.5f, -.5f}, {.9f, .6f, .1f} },
-     { {.5f, -.5f, -.5f}, {.9f, .6f, .1f} },
-     { {.5f, -.5f, .5f}, {.9f, .6f, .1f} },
-
-     // bottom face (red)
- { {-.5f, .5f, -.5f}, {.8f, .1f, .1f} },
- { {.5f, .5f, .5f}, {.8f, .1f, .1f} },
- { {-.5f, .5f, .5f}, {.8f, .1f, .1f} },
- { {-.5f, .5f, -.5f}, {.8f, .1f, .1f} },
- { {.5f, .5f, -.5f}, {.8f, .1f, .1f} },
- { {.5f, .5f, .5f}, {.8f, .1f, .1f} },
-
- // nose face (blue)
-{ {-.5f, -.5f, 0.5f}, {.1f, .1f, .8f} },
-{ {.5f, .5f, 0.5f}, {.1f, .1f, .8f} },
-{ {-.5f, .5f, 0.5f}, {.1f, .1f, .8f} },
-{ {-.5f, -.5f, 0.5f}, {.1f, .1f, .8f} },
-{ {.5f, -.5f, 0.5f}, {.1f, .1f, .8f} },
-{ {.5f, .5f, 0.5f}, {.1f, .1f, .8f} },
-
-// tail face (green)
-{ {-.5f, -.5f, -0.5f}, {.1f, .8f, .1f} },
-{ {.5f, .5f, -0.5f}, {.1f, .8f, .1f} },
-{ {-.5f, .5f, -0.5f}, {.1f, .8f, .1f} },
-{ {-.5f, -.5f, -0.5f}, {.1f, .8f, .1f} },
-{ {.5f, -.5f, -0.5f}, {.1f, .8f, .1f} },
-{ {.5f, .5f, -0.5f}, {.1f, .8f, .1f} },
-
-    };
-    for (auto& v : modelBuilder.vertices) {
-        v.position += offset;
-    }
-    return std::make_shared<Model>(device, modelBuilder);
 }
 
 void MyVulkanApp::onAddDrawVertex(QVector3D vertexPos)
@@ -301,7 +243,7 @@ void MyVulkanApp::loadObjects()
     std::string strPath = "E:\\Kontur_prj.gdb";
     computeGeoBounds(strPath);
     loadShpObjects(strPath);
-
+    m_scene.finish();
 }
 
 void MyVulkanApp::loadShpObjects(const std::string path)
@@ -329,23 +271,12 @@ void MyVulkanApp::loadShpObjects(const std::string path)
             parseFeature(geom);
         count++;
         OGRFeature::DestroyFeature(feature);
-        if (count == 10000)
+#ifdef LIMIT
+        if (count == 100000)
             break;
-
+#endif
     }
 
-    /*  for (int i = 0; i < m_builders.size(); i++)
-      {
-          auto geoModel = std::make_shared<Model>(m_device, m_builders[i]);
-
-          auto object = Object::createObject();
-          object.m_color = { 1,0,0 };
-          object.m_model = geoModel;
-          object.m_transform.translation = { 0.f,0.f,0.f };
-
-          m_lineObjects.push_back(std::move(object));
-
-      }*/
 }
 
 void MyVulkanApp::parseFeature(OGRGeometry* geom)
@@ -357,41 +288,12 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
     {
     case wkbPoint:
     {
-        auto p = geom->toPoint();
-        Model::Vertex vertex = geoToNDC(p->getX(), p->getY());
-        Model::Builder builder;
-        builder.type = ModelType::Point;
-        builder.vertices.push_back(vertex);
 
-        auto model = std::make_shared<Model>(m_device, builder);
-
-        auto point = Object::createObject();
-        point.m_model = model;
-        point.m_color = { 1,0,0 };
-        m_scene.addObject(std::move(point));
     }
     break;
     case wkbLineString:
     {
-        Model::Builder builder;
-        builder.type = ModelType::Line;
-        auto lineString = geom->toLineString();
 
-        for (int i = 0; i < lineString->getNumPoints(); ++i)
-        {
-            builder.vertices.push_back(geoToNDC(lineString->getX(i), lineString->getY(i)));
-            if (i > 0)
-            {
-                builder.indices.push_back(i - 1);
-                builder.indices.push_back(i);
-            }
-        }
-
-        auto model = std::make_shared<Model>(m_device, builder);
-        auto line = Object::createObject();
-        line.m_model = model;
-        line.m_color = { 0,1,0 };
-        m_scene.addObject(std::move(line));
     }
     break;
     case wkbMultiLineString25D:
@@ -419,41 +321,20 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
                 builder.indices.push_back(i);
                 builder.indices.push_back(i + 1);
             }
-            builder.indices.push_back(std::numeric_limits<uint32_t>::max());
 
-            auto geoModel = std::make_shared<Model>(m_device, builder);
+            Model geoModel(builder);
 
             auto object = Object::createObject();
             object.m_color = { 1,0,0 };
             object.m_model = geoModel;
-            object.m_transform.translation = { 0.f,0.f,0.f };
+            object.m_transform.translation = { 0.f,0.f,2.5f };
 
             m_scene.addObject(std::move(object));
-            //m_lineObjects.push_back(std::move(object));
         }
     }
     break;
     case wkbPolygon:
     {
-        auto polygon = geom->toPolygon();
-        auto ring = polygon->getExteriorRing();
-        auto nPts = ring->getNumPoints();
-
-        //m_offset = static_cast<uint32_t>(m_builder.vertices.size());
-
-   /*     for (int i = 0; i < nPts; ++i)
-        {
-            m_builder.vertices.push_back(geoToNDC(ring->getX(i), ring->getY(i)));
-        }
-
-
-        for (uint32_t i = 0; i + 1 < nPts; ++i)
-        {
-            m_builder.indices.push_back(m_offset + 0);
-            m_builder.indices.push_back(m_offset + i);
-            m_builder.indices.push_back(m_offset + i + 1);
-
-        }*/
 
     }
     break;
@@ -494,9 +375,13 @@ void MyVulkanApp::updateBounds(OGRGeometry* geom)
 
 Model::Vertex MyVulkanApp::geoToNDC(double x, double y)
 {
+#ifdef EXPEND_100
+    float ndcX = 100 * float((x - m_minX) / (m_maxX - m_minX) * 2.0 - 1.0);
+    float ndcY = -100 * float((y - m_minY) / (m_maxY - m_minY) * 2.0 - 1.0);
+#else
     float ndcX = float((x - m_minX) / (m_maxX - m_minX) * 2.0 - 1.0);
     float ndcY = -float((y - m_minY) / (m_maxY - m_minY) * 2.0 - 1.0);
-
+#endif
     static std::random_device rd;
     static std::mt19937       gen(rd());
     static std::uniform_real_distribution<float> dist01(0.0f, 1.0f);

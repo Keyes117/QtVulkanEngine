@@ -3,7 +3,8 @@
 #include "Device.h"
 #include "Model.h"
 #include "Object.h"
-
+#include "Layer.h"
+#include "FrameInfo.h"
 class Scene
 {
 
@@ -13,12 +14,13 @@ public:
 
     void addObject(Object&& object);
 
-    void drawPoints(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+    void drawPoints(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
 
-    void drawLines(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+    void drawLines(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
 
-    void drawPolygons(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+    void drawPolygons(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
 
+    void finish();
 private:
     void updateIndrectBuffer(VkDrawIndexedIndirectCommand& cmd,
         std::vector<VkDrawIndexedIndirectCommand>& cmds,
@@ -26,6 +28,10 @@ private:
 
 private:
     Device& m_device;
+
+    std::vector<Layer>                                      m_pointLayers;
+    std::vector<Layer>                                      m_linelayers;
+    std::vector<Layer>                                      m_polygonLayers;
 
     std::vector<Object>                                     m_pointObjects;              // ªÊª≠∂‘œÛ
     std::vector<Object>                                     m_lineObjects;
@@ -39,6 +45,7 @@ private:
     std::vector<VkDrawIndexedIndirectCommand>               m_lineCmd;
     std::vector<VkDrawIndexedIndirectCommand>               m_polygonCmd;
 
+    std::unique_ptr<Buffer>                                 m_stagingBuffer;
 
 };
 

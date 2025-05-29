@@ -76,18 +76,16 @@ void RenderSystem::renderScene(FrameInfo& frameInfo, Scene& scene)
         nullptr
     );
 
-
-
     switch (m_topology)
     {
     case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-    scene.drawPoints(frameInfo.commandBuffer, m_pipelineLayout);
+    scene.drawPoints(frameInfo, m_pipelineLayout);
     break;
     case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-    scene.drawLines(frameInfo.commandBuffer, m_pipelineLayout);
+    scene.drawLines(frameInfo, m_pipelineLayout);
     break;
     case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
-    scene.drawPolygons(frameInfo.commandBuffer, m_pipelineLayout);
+    scene.drawPolygons(frameInfo, m_pipelineLayout);
     break;
 
     }

@@ -106,8 +106,6 @@ Camera::Frustum2D Camera::getFrustum2D() const
 {
     QMatrix4x4 M = m_projectionMartrix * m_viewMatrix;
     Frustum2D f;
-
-
     auto extractPlane = [&](int rowA, int rowB, bool plus, Plane2D& pl)
         {
             // plane = M[3] ¡À M[row]

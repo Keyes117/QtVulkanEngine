@@ -28,7 +28,9 @@ VkCommandBuffer Renderer::beginFrame()
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         recreateSwapChain();
-        return nullptr;
+        result = m_swapChain->acquireNextImage(&m_currentImageIndex);
+        if (result != VK_SUCCESS)
+            return nullptr;
     }
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
     {

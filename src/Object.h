@@ -65,20 +65,19 @@ public:
 
     id_t getId() { return m_id; }
 
-    Object(const Object&) = delete;
-    Object& operator=(const Object&) = delete;
+    Object(const Object&) = default;
+    Object& operator=(const Object&) = default;
     Object(Object&&) = default;
     Object& operator=(Object&&) = default;
 
-    std::shared_ptr<Model>  m_model;
+    AABB getBoundingBox() { return m_model.getBoundingBox(); }
+
+    Model  m_model;
     QVector3D   m_color{};
     TransformComponent m_transform;
 private:
     Object(id_t objID) :m_id(objID) {}
 
-
     id_t m_id;
-
-
 };
 

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "MyVulkanWindow.h"
+#include <vulkan/vulkan.h>
 
 // std lib headers
 #include <string>
 #include <vector>
 
+#include "vma/vk_mem_alloc.h"
 
+class MyVulkanWindow;  // 前向声明
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -47,6 +49,7 @@ public:
     VkQueue graphicsQueue() { return m_graphicsQueue; }
     VkQueue presentQueue() { return m_presentQueue; }
     VkPhysicalDevice physicalDevice() { return m_physicalDevice; }
+    VmaAllocator allocator() const { return m_allocator; }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(m_physicalDevice); }
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -61,6 +64,15 @@ public:
         VkMemoryPropertyFlags properties,
         VkBuffer& buffer,
         VkDeviceMemory& bufferMemory);
+
+    void createBufferVMA(
+        VkDeviceSize size,
+        VkBufferUsageFlags usage,
+        VmaMemoryUsage memoryUsage,
+        VkBuffer& buffer,
+        VmaAllocation& allocation
+    );
+
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -79,12 +91,14 @@ public:
 
 private:
     void createInstance();
+
     void setupDebugMessenger();
     void createSurface();
     void pickPhysicalDevice();
     void createLogicalDevice();
     void createCommandPool();
 
+    void initVulkanMemAllocator();
     void initVulkanProfiler();
 
     // helper functions
@@ -104,6 +118,8 @@ private:
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
     MyVulkanWindow& m_window;
     VkCommandPool m_commandPool;
+
+    VmaAllocator    m_allocator;
 
     VkDevice m_VkDevice;
     VkSurfaceKHR m_VkSurface;
