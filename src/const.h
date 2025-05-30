@@ -16,3 +16,18 @@ struct SimplePushConstantData
     alignas(16) QVector3D color;
 };
 
+struct AABB
+{
+    float minX, minY;
+    float maxX, maxY;
+
+    AABB() :minX(0), minY(0), maxX(0), maxY(0) {}
+    AABB(float minx, float miny, float maxx, float maxy)
+        :minX(minx), minY(miny), maxX(maxx), maxY(maxy) {}
+
+    bool overlaps(const AABB& other)
+    {
+        return !(maxX < other.minX || minX > other.maxX ||
+            maxY < other.minY || minY > other.maxY);
+    }
+};

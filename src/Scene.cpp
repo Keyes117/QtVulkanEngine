@@ -54,8 +54,7 @@ Scene::Scene(Device& device) :
 void Scene::addObject(Object&& object)
 {
 
-
-    switch (object.m_model.type())
+    switch (object.m_model->type())
     {
     case ModelType::Point:
     {
@@ -94,7 +93,7 @@ void Scene::addObject(Object&& object)
     }
 }
 
-void Scene::drawPoints(FrameInfo frameInfo, VkPipelineLayout pipelineLayout)
+void Scene::drawPoints(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout)
 {
     //for (size_t i = 0; i < m_layers.size(); i++)
     //{
@@ -129,13 +128,19 @@ void Scene::drawPoints(FrameInfo frameInfo, VkPipelineLayout pipelineLayout)
     ////}
 }
 
-void Scene::drawLines(FrameInfo frameInfo, VkPipelineLayout pipelineLayout)
+void Scene::drawLines(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout)
 {
+
+    VkCommandBufferInheritanceInfo inhInfo{};
+    inhInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+    inhInfo.renderPass = frameInfo.renderer.getSwapChainRenderPass();
+    inhInfo.subpass = 0;
+    inhInfo.framebuffer = frameInfo.renderer.getSwapChainFrameBuffer();
 
     for (auto& layer : m_linelayers)
     {
-        layer.bind(frameInfo.commandBuffer);
-        layer.draw(frameInfo.commandBuffer, frameInfo.camera);
+        //layer.bind(frameInfo.commandBuffer);
+        layer.draw(frameInfo, pipelineLayout, inhInfo);
     }
     //for (size_t i = 0; i < m_lineObjects.size(); i++)
     //{
@@ -169,7 +174,7 @@ void Scene::drawLines(FrameInfo frameInfo, VkPipelineLayout pipelineLayout)
 
 }
 
-void Scene::drawPolygons(FrameInfo frameInfo, VkPipelineLayout pipelineLayout)
+void Scene::drawPolygons(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout)
 {
     //for (size_t i = 0; i < m_polygonObjects.size(); i++)
     //{

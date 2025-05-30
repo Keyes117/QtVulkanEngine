@@ -159,7 +159,8 @@ void MyVulkanApp::run()
                     frameTime,
                     commandBuffer,
                     m_camera,
-                    m_globalDescriptSets[frameIndex]
+                    m_globalDescriptSets[frameIndex],
+                    m_renderer
                 };
 
                 auto metaData = (m_camera.getProjection() * m_camera.getView()).constData();
@@ -322,7 +323,7 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
                 builder.indices.push_back(i + 1);
             }
 
-            Model geoModel(builder);
+            auto geoModel = std::make_shared<Model>(m_device, builder);
 
             auto object = Object::createObject();
             object.m_color = { 1,0,0 };

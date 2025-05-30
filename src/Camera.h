@@ -21,6 +21,14 @@ public:
         //left, right, bottom, top
         std::array<Plane2D, 4 > planes;
 
+
+        bool insersects(AABB aabb) const
+        {
+            QVector2D mn(aabb.minX, aabb.minY);
+            QVector2D mx(aabb.maxX, aabb.maxY);
+            return insersects(mn, mx);
+        }
+
         bool insersects(const QVector2D& mn, const QVector2D& mx) const
         {
             for (auto& pl : planes)

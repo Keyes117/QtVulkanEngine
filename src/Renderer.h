@@ -34,6 +34,7 @@ public:
     Renderer& operator=(Renderer&&) = delete;
 
     VkRenderPass getSwapChainRenderPass() const { return m_swapChain->getRenderPass(); }
+    VkFramebuffer getSwapChainFrameBuffer() const { return m_swapChain->getFrameBuffer(m_currentFrameIndex); }
     bool isFrameInProgress() const { return m_isFrameStarted; }
 
     float  getAspectRatio() const { return m_swapChain->extentAspectRatio(); }

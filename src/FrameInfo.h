@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Camera.h"
-
+#include "Renderer.h"
 #include <vulkan/vulkan.h>
 
 struct FrameInfo
@@ -11,6 +11,7 @@ struct FrameInfo
     VkCommandBuffer commandBuffer;
     Camera& camera;
     VkDescriptorSet globalDescriptorSet;
+    Renderer& renderer;
 
 };
 

@@ -14,11 +14,11 @@ public:
 
     void addObject(Object&& object);
 
-    void drawPoints(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
+    void drawPoints(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout);
 
-    void drawLines(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
+    void drawLines(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout);
 
-    void drawPolygons(FrameInfo frameInfo, VkPipelineLayout pipelineLayout);
+    void drawPolygons(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout);
 
     void finish();
 private:
