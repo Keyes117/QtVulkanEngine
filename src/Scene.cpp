@@ -54,7 +54,7 @@ Scene::Scene(Device& device) :
 void Scene::addObject(Object&& object)
 {
 
-    switch (object.m_model->type())
+    switch (object.getModel()->type())
     {
     case ModelType::Point:
     {
@@ -72,8 +72,8 @@ void Scene::addObject(Object&& object)
         m_lineObjects.push_back(std::move(object));
         if (m_lineObjects.size() > Layer::MAX_MODEL_COUNT)
         {
-            Layer layer(m_device, ModelType::Line, std::move(m_lineObjects));
-            m_linelayers.emplace_back(std::move(layer));
+            //Layer layer();
+            m_linelayers.emplace_back(m_device, ModelType::Line, std::move(m_lineObjects));
 
         }
     }
@@ -211,8 +211,8 @@ void Scene::drawPolygons(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout)
 
 void Scene::finish()
 {
-    Layer layer(m_device, ModelType::Line, std::move(m_lineObjects));
-    m_linelayers.emplace_back(std::move(layer));
+    /* Layer layer(m_device, ModelType::Line, std::move(m_lineObjects));
+     m_linelayers.emplace_back(std::move(layer));*/
 
 }
 

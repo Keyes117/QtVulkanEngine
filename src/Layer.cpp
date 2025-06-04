@@ -8,6 +8,9 @@
 #undef max
 #endif
 
+#include <utility>
+#include <exception>
+
 Layer::Layer(Device& device, ModelType type, std::vector<Object>&& object) :
     m_device(device),
     m_type(type),
@@ -61,26 +64,48 @@ void Layer::draw(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, VkComman
 
 void Layer::recordVisibleTileCommands(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, VkCommandBufferInheritanceInfo& inhInfo)
 {
-    VkCommandBufferBeginInfo beginInfo;
+    VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
         | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
+    beginInfo.pNext = nullptr;
     beginInfo.pInheritanceInfo = &inhInfo;
     for (auto& tile : m_tiles)
     {
+
+        if (tile.secondaryCommandBuffer == VK_NULL_HANDLE)
+        {
+            int i = 0;
+            continue;
+        }
+
         if (!tile.objects.empty() && frameInfo.camera.getFrustum2D().insersects(tile.bounds))
         {
-            vkResetCommandBuffer(tile.secondaryCommandBuffer, 0);
-            vkBeginCommandBuffer(tile.secondaryCommandBuffer, &beginInfo);
+            try
+            {
+                auto resetResult = vkResetCommandBuffer(tile.secondaryCommandBuffer, 0);
+                if (resetResult != VK_SUCCESS)
+                {
+                    throw std::runtime_error("failed to resert command buffer!");
+                }
+                auto beginResult = vkBeginCommandBuffer(tile.secondaryCommandBuffer, &beginInfo);
+                if (beginResult != VK_SUCCESS)
+                {
+                    throw std::runtime_error("failed to begin command buffer!");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                qDebug() << QString::fromStdString(e.what());
+            }
 
 
             for (auto* obj : tile.objects)
             {
                 SimplePushConstantData push{};
-                push.color = obj->m_color;
+                push.color = obj->getColor();
 
-                push.modelMatrix = obj->m_transform.mat4f();
+                push.modelMatrix = obj->getTransform().mat4f();
                 vkCmdPushConstants(
                     tile.secondaryCommandBuffer,
                     pipelineLayout,
@@ -89,8 +114,8 @@ void Layer::recordVisibleTileCommands(FrameInfo& frameInfo, VkPipelineLayout pip
                     sizeof(SimplePushConstantData),
                     &push);
 
-                obj->m_model->bind(tile.secondaryCommandBuffer);
-                obj->m_model->draw(tile.secondaryCommandBuffer, frameInfo.camera);
+                obj->getModel()->bind(tile.secondaryCommandBuffer);
+                obj->getModel()->draw(tile.secondaryCommandBuffer, frameInfo.camera);
             }
             vkEndCommandBuffer(tile.secondaryCommandBuffer);
         }
@@ -116,8 +141,8 @@ void Layer::init()
         m_worldBounds.maxX = std::max(m_worldBounds.maxX, b.maxX);
         m_worldBounds.maxY = std::max(m_worldBounds.maxY, b.maxY);
 
-        m_vertexCount += obj.m_model->vertexCount();
-        m_indexCount += obj.m_model->indexCount();
+        m_vertexCount += obj.getModel()->vertexCount();
+        m_indexCount += obj.getModel()->indexCount();
     }
 
     vertices.reserve(m_vertexCount);
@@ -152,11 +177,23 @@ void Layer::initBuffer()
 
 void Layer::initTiles()
 {
+    if (m_tileCols <= 0 || m_tileRows <= 0)
+        throw std::runtime_error("invalid tile size");
+
     float totalWidth = m_worldBounds.maxX - m_worldBounds.minX;
     float totalHeight = m_worldBounds.maxY - m_worldBounds.minY;
 
+    if (totalWidth <= 0 || totalHeight <= 0)
+        throw std::runtime_error("invalid world bounding");
+
     float w = totalWidth / m_tileCols;
     float h = totalHeight / m_tileRows;
+
+    for (auto& tile : m_tiles)
+    {
+        if (tile.secondaryCommandBuffer != VK_NULL_HANDLE)
+            vkFreeCommandBuffers(m_device.device(), m_device.getCommandPool(), 1, &tile.secondaryCommandBuffer);
+    }
 
     m_tiles.clear();
     m_tiles.reserve(m_tileCols * m_tileRows);
@@ -172,24 +209,28 @@ void Layer::initTiles()
                 m_worldBounds.minX + (x + 1) * w,
                 m_worldBounds.minY + (y + 1) * h);
 
-            VkCommandBufferAllocateInfo allocateInfo;
+            tile.objects.clear();
+
+            VkCommandBufferAllocateInfo allocateInfo{};
             allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
             allocateInfo.commandPool = m_device.getCommandPool();
             allocateInfo.commandBufferCount = 1;
-            vkAllocateCommandBuffers(m_device.device(), &allocateInfo, &tile.secondaryCommandBuffer);
-            m_tiles.push_back(tile);
+
+            VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+            auto res = vkAllocateCommandBuffers(m_device.device(), &allocateInfo, &commandBuffer);
+            if (res != VK_SUCCESS || commandBuffer == VK_NULL_HANDLE)
+            {
+                throw std::runtime_error("failed to allocate secondary command buffer!");
+            }
+            tile.secondaryCommandBuffer = commandBuffer;
+            m_tiles.push_back(std::move(tile));
         }
     }
 }
 
 void Layer::assignObjectsToTiles()
 {
-    for (auto& tile : m_tiles)
-    {
-        tile.objects.clear();
-    }
-
     for (auto& obj : m_objects)
     {
         AABB b = obj.getBoundingBox();

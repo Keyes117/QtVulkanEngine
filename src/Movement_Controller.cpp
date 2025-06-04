@@ -31,12 +31,12 @@ void Keyboard_Movement_Controller::moveInPlane(int QtKey, float dt)
     return;
     }
 
-    auto t = m_object.m_transform.translation;
+    auto t = m_object.getTranslation();
     t.setX(t.x() + delta.x());
     t.setY(t.y() + delta.y());
-    m_object.m_transform.translation = t;
+    m_object.setTranslation(t);
 
-    m_camera.setViewLocation(m_object.m_transform.translation, m_object.m_transform.rotation);
+    m_camera.setViewLocation(m_object.getTranslation(), m_object.getRotation());
 }
 
 Mouse_Movement_Controller::Mouse_Movement_Controller(Object& object, Camera& camera) :
@@ -48,12 +48,12 @@ Mouse_Movement_Controller::Mouse_Movement_Controller(Object& object, Camera& cam
 void Mouse_Movement_Controller::moveInPlane(const QVector3D& delteVector, float dt)
 {
 
-    m_object.m_transform.translation += delteVector * dt * Mouse_Movement_Controller::moveSpeed;
-    m_camera.setViewLocation(m_object.m_transform.translation, m_object.m_transform.rotation);
+    m_object.setTranslation(m_object.getTranslation() += delteVector * dt * Mouse_Movement_Controller::moveSpeed);
+    m_camera.setViewLocation(m_object.getTranslation(), m_object.getRotation());
 }
 
 void Mouse_Movement_Controller::zoom(QVector3D ndcAndSteps, float dt)
 {
-    m_object.m_transform.translation += ndcAndSteps * dt * moveSpeed;
-    m_camera.setViewLocation(m_object.m_transform.translation, m_object.m_transform.rotation);
+    m_object.setTranslation(m_object.getTranslation() += ndcAndSteps * dt * moveSpeed);
+    m_camera.setViewLocation(m_object.getTranslation(), m_object.getRotation());
 }

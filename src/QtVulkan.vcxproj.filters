@@ -89,6 +89,21 @@
     <ClCompile Include="VMABuffer.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="QuadTree.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="BufferPool.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -140,6 +155,21 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="VMABuffer.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="QuadTree.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectManager.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferPool.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderManager.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneManager.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

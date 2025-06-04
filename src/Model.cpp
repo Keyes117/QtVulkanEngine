@@ -15,11 +15,13 @@ Model::Model(Device& device, Model::Builder& builder)
     : m_device(device),
     m_type(builder.type),
     m_vertices(std::move(builder.vertices)),
-    m_indices(std::move(builder.indices))
+    m_indices(std::move(builder.indices)),
+    m_vertexCount(m_vertices.size()),
+    m_indexCount(m_indices.size())
 {
 
-    createVertexBuffers(m_vertices);
-    createIndexBuffers(m_indices);
+    //createVertexBuffers(m_vertices);
+    //createIndexBuffers(m_indices);
     for (const auto& v : m_vertices) {
         float x = v.position.x();
         float y = v.position.y();
@@ -86,6 +88,7 @@ std::vector<VkVertexInputAttributeDescription> Model::Vertex::getAttributeDescri
 void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
 {
     //assert(m_vertexCount >= 3 && "Vertex Count must be at lease 3");
+
     VkDeviceSize bufferSize = sizeof(vertices[0]) * m_vertexCount;
 
     uint32_t vertexSize = sizeof(vertices[0]);

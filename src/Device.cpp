@@ -501,12 +501,13 @@ void Device::createBufferVMA(VkDeviceSize size, VkBufferUsageFlags usage, VmaMem
     allocCreateInfo.requiredFlags = 0;
     allocCreateInfo.preferredFlags = 0;
 
-    if (vmaCreateBuffer(m_allocator,
+    auto res = vmaCreateBuffer(m_allocator,
         &bufferInfo,
         &allocCreateInfo,
         &buffer,
         &allocation,
-        nullptr) != VK_SUCCESS)
+        nullptr);
+    if (res != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create buffer");
     }

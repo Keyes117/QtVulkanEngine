@@ -273,7 +273,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
         count++;
         OGRFeature::DestroyFeature(feature);
 #ifdef LIMIT
-        if (count == 100000)
+        if (count == 200000)
             break;
 #endif
     }
@@ -326,9 +326,9 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
             auto geoModel = std::make_shared<Model>(m_device, builder);
 
             auto object = Object::createObject();
-            object.m_color = { 1,0,0 };
-            object.m_model = geoModel;
-            object.m_transform.translation = { 0.f,0.f,2.5f };
+            object.setColor({ 1,0,0 });
+            object.setModel(geoModel);
+            object.setTranlation({ 0.f,0.f,2.5f });
 
             m_scene.addObject(std::move(object));
         }

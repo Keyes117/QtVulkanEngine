@@ -1,9 +1,14 @@
 #pragma once
 #include "Model.h"
 
-#include "const.h"
 #include <memory>
+#include <cstdint>
+#include <functional>
+
 #include <qmatrix4x4.h>
+
+#include "const.h"
+
 struct TransformComponent
 {
     QVector3D translation{}; // position offset
@@ -14,13 +19,6 @@ struct TransformComponent
 
         QMatrix4x4 transform;
         transform.setToIdentity();
-        /*
-              transform.translate(translation);
-              transform.rotate(rotation.y(), { 0,1,0 });
-              transform.rotate(rotation.z(), { 0,0,1 });
-              transform.rotate(rotation.x(), { 1,0,0 });
-              transform.scale(scale);*/
-
         const float c3 = std::cos(rotation.z());
         const float s3 = std::sin(rotation.z());
         const float c2 = std::cos(rotation.x());
@@ -50,20 +48,34 @@ struct TransformComponent
 
         return transform;
     }
+
 };
 
 class Object
 {
 public:
-    using id_t = unsigned int;
+    using ObjectID = uint64_t;
+
+    enum class UpdateType
+    {
+        None = 0,
+        Translation = 1 << 0,
+        Scale = 1 << 1,
+        Rotation = 1 << 2,
+        Color = 1 << 3,
+        All = Translation | Scale | Rotation | Color
+    };
 
     static Object createObject()
     {
-        static id_t currentId = 0;
+        static ObjectID currentId = 0;
         return Object(currentId++);
     }
 
-    id_t getId() { return m_id; }
+    //Object(ObjectID objID, std::shared_ptr<Model> model) 
+    //    : m_id(objID), m_model(model) {}
+
+    ObjectID getId() { return m_id; }
 
     Object(const Object&) = default;
     Object& operator=(const Object&) = default;
@@ -71,14 +83,82 @@ public:
     Object& operator=(Object&&) = default;
 
     AABB getBoundingBox() { return m_model->getBoundingBox(); }
+    bool needsUpdate() const { return m_updateFlags != 0; }
 
+    void clearUpdateFlags() { m_updateFlags = 0; }
 
-    std::shared_ptr<Model>  m_model;
+    std::shared_ptr<Model> getModel() const { return m_model; }
+
+    QVector3D getColor() const { return m_color; }
+    QVector3D getTranslation() const { return m_transform.translation; }
+    QVector3D getScale() const { return m_transform.scale; }
+    QVector3D getRotation() const { return m_transform.rotation; }
+    TransformComponent getTransform() const { return m_transform; }
+
+    void setPosition(const QVector3D& position) { setTranslation(position); }
+
+    void setTranslation(const QVector3D& translation)
+    {
+        if (m_transform.translation != translation)
+        {
+            m_transform.translation = translation;
+            markUpdate(UpdateType::Translation);
+        }
+    }
+
+    void setScale(const QVector3D& scale)
+    {
+        if (m_transform.scale != scale)
+        {
+            m_transform.scale = scale;
+            markUpdate(UpdateType::Scale);
+        }
+    }
+
+    void setRotation(const QVector3D& rotation)
+    {
+        if (m_transform.rotation != rotation)
+        {
+            m_transform.rotation = rotation;
+            markUpdate(UpdateType::Rotation);
+        }
+    }
+
+    void setColor(const QVector3D& color)
+    {
+        if (m_color != color)
+        {
+            m_color = color;
+            markUpdate(UpdateType::Color);
+        }
+    }
+
+    void setModel(std::shared_ptr<Model>& model)
+    {
+        m_model = model;
+    }
+
+    void setUpdateCallback(std::function<void(Object*)> callback)
+    {
+        m_updateCallback = callback;
+    }
+
+private:
+    Object(ObjectID objID);
+
     QVector3D   m_color{};
     TransformComponent m_transform;
-private:
-    Object(id_t objID) :m_id(objID) {}
+    uint32_t    m_updateFlags{ 0 };
+    ObjectID m_id;
+    std::shared_ptr<Model>  m_model;
 
-    id_t m_id;
+    std::function<void(Object*)> m_updateCallback;
+    void markUpdate(UpdateType type)
+    {
+        m_updateFlags |= static_cast<uint32_t>(type);
+        if (m_updateCallback)
+            m_updateCallback(this);
+    }
+
 };
 

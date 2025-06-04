@@ -47,6 +47,7 @@ public:
     AABB getBoundingBox() { return m_boundingBox; }
     uint32_t  vertexCount()const { return m_vertices.size(); }
     uint32_t  indexCount() const { return m_indices.size(); }
+    bool hasIndexBuffer() const { return m_hasIndexBuffer; }
     ModelType type() const { return m_type; }
 private:
     void createVertexBuffers(const std::vector<Vertex>& vertices);
@@ -59,11 +60,11 @@ private:
     AABB                        m_boundingBox{ std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
         -std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity() };
 
-    std::shared_ptr<VMABuffer>  m_vertexBuffer;
+    //std::shared_ptr<VMABuffer>  m_vertexBuffer;
     uint32_t                    m_vertexCount{ 0 };
 
     bool                        m_hasIndexBuffer;
-    std::shared_ptr<VMABuffer>  m_indexBuffer;
+    //std::shared_ptr<VMABuffer>  m_indexBuffer;
     uint32_t                    m_indexCount{ 0 };
 };
 

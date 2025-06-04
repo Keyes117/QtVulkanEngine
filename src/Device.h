@@ -1,14 +1,14 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "MyVulkanWindow.h"
 
 // std lib headers
 #include <string>
 #include <vector>
 
+
 #include "vma/vk_mem_alloc.h"
 
-class MyVulkanWindow;  // 前向声明
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -50,6 +50,11 @@ public:
     VkQueue presentQueue() { return m_presentQueue; }
     VkPhysicalDevice physicalDevice() { return m_physicalDevice; }
     VmaAllocator allocator() const { return m_allocator; }
+
+    // 添加获取图形队列族索引的方法
+    uint32_t getGraphicsQueueFamily() { 
+        return findPhysicalQueueFamilies().graphicsFamily; 
+    }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(m_physicalDevice); }
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

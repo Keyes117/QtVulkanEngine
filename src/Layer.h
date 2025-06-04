@@ -33,6 +33,48 @@ public:
     /* std::shared_ptr<VMABuffer> getVertexBuffer() { return m_vertexBuffer; }
      std::shared_ptr<VMABuffer> getIndexBuffer() { return m_indexBuffer; }*/
 
+     // 移动构造函数
+    Layer(Layer&& other) noexcept
+        : m_device(other.m_device)
+        , m_type(other.m_type)
+        , m_objects(std::move(other.m_objects))
+        , m_tiles(std::move(other.m_tiles))
+        , m_tileCols(other.m_tileCols)
+        , m_tileRows(other.m_tileRows)
+        , m_worldBounds(other.m_worldBounds)
+        , m_vertexCount(other.m_vertexCount)
+        , m_indexCount(other.m_indexCount)
+    {
+        // 确保其他对象的析构函数不会释放资源
+        other.m_tiles.clear();
+    }
+
+    // 移动赋值运算符
+    Layer& operator=(Layer&& other) noexcept {
+        if (this != &other) {
+            // 先释放当前对象的资源
+            for (auto& tile : m_tiles) {
+                if (tile.secondaryCommandBuffer != VK_NULL_HANDLE) {
+                    vkFreeCommandBuffers(m_device.device(), m_device.getCommandPool(), 1, &tile.secondaryCommandBuffer);
+                }
+            }
+
+            // 移动新资源
+            m_type = other.m_type;
+            m_objects = std::move(other.m_objects);
+            m_tiles = std::move(other.m_tiles);
+            m_tileCols = other.m_tileCols;
+            m_tileRows = other.m_tileRows;
+            m_worldBounds = other.m_worldBounds;
+            m_vertexCount = other.m_vertexCount;
+            m_indexCount = other.m_indexCount;
+
+            // 确保其他对象的析构函数不会释放资源
+            other.m_tiles.clear();
+        }
+        return *this;
+    }
+
 private:
     void init();
 
@@ -41,8 +83,8 @@ private:
     void assignObjectsToTiles();
 
 
-    void createVertexBuffers(const std::vector<Model::Vertex>& vertices);
-    void createIndexBuffers(const std::vector<uint32_t>& indices);
+    //void createVertexBuffers(const std::vector<Model::Vertex>& vertices);
+    //void createIndexBuffers(const std::vector<uint32_t>& indices);
 
 private:
     Device& m_device;
