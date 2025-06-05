@@ -6,16 +6,27 @@ BufferPool::BufferPool(Device& device) :
 {
 }
 
-uint32_t BufferPool::allocateBuffer(const Object& object)
+uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
 {
-    auto vertices = object.getModel()->getVerticeRef();
-    auto indices = object.getModel()->getIndicesRef();
-    auto type = object.getModel()->type();
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto vertices = builder.vertices;
+    auto indices = builder.indices;
+    auto type = builder.type;
 
     if (vertices.empty())
-        return 0;
+    {
+        qWarning() << "model has no vertices";
+        return INVALID_CHUNK_ID;
+    }
+
 
     auto* segment = getOrCreateSegment(type);
+    if (!segment)
+    {
+        qWarning() << "failed to get or create segment for type " << static_cast<int>(type);
+        return INVALID_CHUNK_ID;
+    }
 
     //检查当前段是否有足够的空间
     if (segment->usedVertices + vertices.size() > segment->vertexCapacity ||
@@ -31,23 +42,34 @@ uint32_t BufferPool::allocateBuffer(const Object& object)
         newSegment.indexCapacity = INDICES_PER_SEGMENT;
         newSegment.usedVertices = 0;
         newSegment.usedIndices = 0;
+        newSegment.isActive = true;
 
-        //创建GPU缓冲区
-        newSegment.vertexBuffer = std::make_unique<VMABuffer>(
-            m_device,
-            sizeof(Model::Vertex),
-            newSegment.vertexCapacity,
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
-        );
+        try
+        {
+            //创建GPU缓冲区
+            newSegment.vertexBuffer = std::make_unique<VMABuffer>(
+                m_device,
+                sizeof(Model::Vertex),
+                newSegment.vertexCapacity,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY
+            );
 
-        newSegment.indexBuffer = std::make_unique<VMABuffer>(
-            m_device,
-            sizeof(uint32_t),
-            newSegment.indexCapacity,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY
-        );
+            newSegment.indexBuffer = std::make_unique<VMABuffer>(
+                m_device,
+                sizeof(uint32_t),
+                newSegment.indexCapacity,
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY
+            );
+        }
+        catch (const std::exception& e)
+        {
+            qWarning() << "failed to create buffers: " << e.what();
+            m_bufferPools[type].pop_back();
+            return INVALID_CHUNK_ID;
+        }
+
 
         //TODO 实现BufferSegment的 Copy-Constructor
         segment = &newSegment;
@@ -59,6 +81,7 @@ uint32_t BufferPool::allocateBuffer(const Object& object)
     chunk.indexOffset = segment->usedIndices;
     chunk.indexCount = indices.size();
     chunk.isLoaded = true;
+    chunk.bounds = builder.bounds;
 
     copyDataToSegment(segment, vertices, indices, chunk.vertexOffset, chunk.indexOffset);
 
@@ -80,6 +103,8 @@ uint32_t BufferPool::allocateBuffer(const Object& object)
 
 std::vector<uint32_t> BufferPool::getVisibleChunks(const Camera& camera, ModelType type)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     std::vector<uint32_t> visibleChunks;
 
     auto typeIt = m_bufferPools.find(type);
@@ -87,6 +112,9 @@ std::vector<uint32_t> BufferPool::getVisibleChunks(const Camera& camera, ModelTy
     {
         for (const auto& segment : typeIt->second)
         {
+            if (!segment.isActive)
+                continue;
+
             for (uint32_t chunkId : segment.chunks)
             {
                 const auto& chunk = m_chunks[chunkId];
@@ -103,12 +131,17 @@ std::vector<uint32_t> BufferPool::getVisibleChunks(const Camera& camera, ModelTy
 
 void BufferPool::bindBuffersForType(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentId)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     auto typeIt = m_bufferPools.find(type);
     if (typeIt == m_bufferPools.end() || segmentId >= typeIt->second.size())
         return;
 
 
     const auto& segment = typeIt->second[segmentId];
+
+    if (!segment.isActive || !segment.vertexBuffer)
+        return;
 
     VkBuffer vertexBuffers[] = { segment.vertexBuffer->getBuffer() };
     VkDeviceSize offsets[] = { 0 };
@@ -128,6 +161,9 @@ void BufferPool::drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint
 
     const auto& chunk = it->second;
 
+    if (!chunk.isLoaded)
+        return;
+
     if (chunk.indexCount > 0)
     {
         vkCmdDrawIndexed(commandBuffer,
@@ -145,6 +181,30 @@ void BufferPool::drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint
             chunk.vertexOffset,
             0);
     }
+}
+
+const BufferPool::Chunk* BufferPool::getChunk(uint32_t chunkId) const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto it = m_chunks.find(chunkId);
+    return (it != m_chunks.end()) ? &it->second : nullptr;
+}
+
+ModelType BufferPool::getChunkType(uint32_t chunkId) const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto it = m_chunkTypes.find(chunkId);
+    return (it != m_chunkTypes.end()) ? it->second : ModelType::None;
+}
+
+uint32_t BufferPool::getChunkBufferIndex(uint32_t chunkId) const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto it = m_chunkToSegmentIndex.find(chunkId);
+    return (it != m_chunkToSegmentIndex.end()) ? it->second : UINT32_MAX;
 }
 
 void BufferPool::printPoolStatus() const
@@ -228,6 +288,9 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
     uint32_t vertexOffset,
     uint32_t indexOffset)
 {
+
+    //TODO: 验证segment
+
     VkDeviceSize vertexDataSize = vertices.size() * sizeof(Model::Vertex);
 
     VMABuffer vertexStagingBuffer(
@@ -260,5 +323,6 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
 
         m_device.copyBuffer(indexStagingBuffer.getBuffer(), segment->indexBuffer->getBuffer(), indexDataSize);
     }
+
 
 }

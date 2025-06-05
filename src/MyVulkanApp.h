@@ -13,7 +13,7 @@
 #include "RenderSystem.h"
 #include "Scene.h"
 #include "SwapChain.h"
-
+#include "SceneManager.h"
 #include "qobject.h"
 
 
@@ -78,13 +78,10 @@ private:
     Object                                                  m_previewObject;
     Camera                                                  m_camera;               //相机类
     Device                                                  m_device;               //负责初始化Vulkan基础组件
-    Renderer                                                m_renderer;
-    //swapchain 和 commandbuffer
-    std::shared_ptr<RenderSystem>                           m_pointRenderSystem;         //pipeline 和 pipelineLayout
-    std::shared_ptr<RenderSystem>                           m_lineRenderSystem;
-    std::shared_ptr<RenderSystem>                           m_polygonRenderSystem;
 
-    Scene                                                   m_scene;
+    std::unique_ptr<SceneManager>                           m_sceneManager;
+
+    //Scene                                                   m_scene;
 
     uint32_t                                                m_offset;
     //Model::Builder                                          m_builder;

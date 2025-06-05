@@ -77,12 +77,6 @@
     <ClCompile Include="Descriptors.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="Layer.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="vk_mem_alloc.cpp">
       <Filter>vma</Filter>
     </ClCompile>
@@ -146,12 +140,6 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="Descriptors.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="Layer.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="VMABuffer.h">

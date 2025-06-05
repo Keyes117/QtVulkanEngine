@@ -9,6 +9,8 @@
 
 #include "const.h"
 
+
+
 struct TransformComponent
 {
     QVector3D translation{}; // position offset
@@ -55,6 +57,17 @@ class Object
 {
 public:
     using ObjectID = uint64_t;
+    using UpdateCallback = std::function<void(Object*)>;
+
+    struct Builder
+    {
+        std::vector<Model::Vertex> vertices{};
+        std::vector<uint32_t> indices{};
+        ModelType           type{ ModelType::None };
+        AABB bounds{ 0.0,0.0,0.0,0.0 };
+        TransformComponent transform{};
+        QVector3D color{ 0.f, 0.f,0.f };
+    };
 
     enum class UpdateType
     {
@@ -63,7 +76,9 @@ public:
         Scale = 1 << 1,
         Rotation = 1 << 2,
         Color = 1 << 3,
-        All = Translation | Scale | Rotation | Color
+        Model = 1 << 4,
+        Visibility = 1 << 5,
+        All = Translation | Scale | Rotation | Color | Model | Visibility
     };
 
     static Object createObject()
@@ -72,8 +87,10 @@ public:
         return Object(currentId++);
     }
 
-    //Object(ObjectID objID, std::shared_ptr<Model> model) 
-    //    : m_id(objID), m_model(model) {}
+    Object() {
+
+    }
+    Object(ObjectID objID) :m_id(objID) {}
 
     ObjectID getId() { return m_id; }
 
@@ -89,11 +106,14 @@ public:
 
     std::shared_ptr<Model> getModel() const { return m_model; }
 
+    uint32_t  getChunkID() const { return m_chunkId; }
     QVector3D getColor() const { return m_color; }
     QVector3D getTranslation() const { return m_transform.translation; }
     QVector3D getScale() const { return m_transform.scale; }
     QVector3D getRotation() const { return m_transform.rotation; }
     TransformComponent getTransform() const { return m_transform; }
+
+    void setChunkId(uint32_t chunkId) { m_chunkId = chunkId; }
 
     void setPosition(const QVector3D& position) { setTranslation(position); }
 
@@ -124,6 +144,10 @@ public:
         }
     }
 
+    void setTransform(const TransformComponent transform) {
+        m_transform = transform;
+    }
+
     void setColor(const QVector3D& color)
     {
         if (m_color != color)
@@ -138,21 +162,23 @@ public:
         m_model = model;
     }
 
-    void setUpdateCallback(std::function<void(Object*)> callback)
+    void setUpdateCallback(std::function<void(Object*)>&& callback)
     {
-        m_updateCallback = callback;
+        m_updateCallback = std::move(callback);
     }
 
 private:
-    Object(ObjectID objID);
+
 
     QVector3D   m_color{};
-    TransformComponent m_transform;
+    TransformComponent m_transform{};
+    uint32_t    m_chunkId{ 0 };
     uint32_t    m_updateFlags{ 0 };
-    ObjectID m_id;
-    std::shared_ptr<Model>  m_model;
+    ObjectID    m_id{ 0 };
+    std::shared_ptr<Model>  m_model{ nullptr };
 
-    std::function<void(Object*)> m_updateCallback;
+
+    UpdateCallback m_updateCallback{ nullptr };
     void markUpdate(UpdateType type)
     {
         m_updateFlags |= static_cast<uint32_t>(type);
@@ -162,3 +188,12 @@ private:
 
 };
 
+inline Object::UpdateType operator|(Object::UpdateType a, Object::UpdateType b)
+{
+    return static_cast<Object::UpdateType>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+
+inline Object::UpdateType operator&(Object::UpdateType a, Object::UpdateType b)
+{
+    return static_cast<Object::UpdateType>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}

@@ -28,7 +28,13 @@ public:
     //RenderSystem(RenderSystem&&) = delete;
     //RenderSystem& operator=(RenderSystem&&) = delete;
 
-    void renderScene(FrameInfo& frameInfo, Scene& scene);
+    void bind(VkCommandBuffer commandBuffer)
+    {
+        m_pipeline->bind(commandBuffer);
+    }
+
+    //void render()
+    VkPipelineLayout getPipelineLayout() { return m_pipelineLayout; }
 
 private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

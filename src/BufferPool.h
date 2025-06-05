@@ -3,12 +3,15 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 #include "Camera.h"
 #include "Device.h"
 #include "Model.h"
 #include "Object.h"
 #include "VMABuffer.h"
+
+#define INVALID_CHUNK_ID -1
 
 class BufferPool
 {
@@ -22,6 +25,7 @@ public:
         AABB bounds{ 0,0,0,0 };
         //uint32_t lodLevel;'
         bool    isLoaded{ false };
+        uint32_t  segmentIndex{ 0 };
     };
 
     struct BufferSegment
@@ -33,6 +37,7 @@ public:
         uint32_t usedVertices{ 0 };
         uint32_t usedIndices{ 0 };
         std::vector<uint32_t>   chunks;
+        bool isActive{ true };
 
     };
 
@@ -42,20 +47,21 @@ public:
     BufferPool(Device& device);
     ~BufferPool() = default;
 
-    uint32_t allocateBuffer(const Object& object);
+    uint32_t allocateBuffer(const Object::Builder& builder);
     std::vector<uint32_t> getVisibleChunks(const Camera& camera, ModelType type);
 
     void bindBuffersForType(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentId = 0);
     void drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint32_t instanceCount = 1);
 
-    const Chunk* getChunk(uint32_t chunkId) const { return m_chunks[chunkId]; }
-    ModelType getChunkType(uint32_t chunkId) const { return m_chunkTypes[chunkId]; };
-    uint32_t getChunkBufferIndex(uint32_t chunkId) const { return m_chunkToSegmentIndex[chunkId]; };
+    const Chunk* getChunk(uint32_t chunkId) const;
+    ModelType getChunkType(uint32_t chunkId) const;
+    uint32_t getChunkBufferIndex(uint32_t chunkId) const;
 
     void printPoolStatus() const;
 
 private:
     Device& m_device;
+    mutable std::mutex                                          m_mutex;
 
     std::unordered_map<ModelType, std::vector<BufferSegment>>   m_bufferPools;
 

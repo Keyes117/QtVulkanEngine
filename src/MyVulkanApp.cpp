@@ -6,8 +6,8 @@
 #include <random>
 #include "Buffer.h"
 #include "Movement_Controller.h"
-
-#define EXPEND_100
+#include "Object.h"
+//#define EXPEND_100
 #define LIMIT
 
 
@@ -34,9 +34,7 @@ MyVulkanApp::MyVulkanApp() :
     m_previewObject(Object::createObject()),
     m_keyBoardController(m_cameraObject, m_camera),
     m_mouseController(m_cameraObject, m_camera),
-    m_device(m_window),
-    m_renderer(m_window, m_device),
-    m_scene(m_device)
+    m_device(m_window)
 {
 
     createQueryPools();
@@ -81,20 +79,8 @@ MyVulkanApp::MyVulkanApp() :
             .build(m_globalDescriptSets[i]);
     }
 
-    m_pointRenderSystem = std::make_shared<RenderSystem>(m_device,
-        m_renderer.getSwapChainRenderPass(),
-        m_globalSetLayout->getDescriptorSetLayout(),
-        VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 
-    m_lineRenderSystem = std::make_shared<RenderSystem>(m_device,
-        m_renderer.getSwapChainRenderPass(),
-        m_globalSetLayout->getDescriptorSetLayout(),
-        VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-
-    m_polygonRenderSystem = std::make_shared<RenderSystem>(m_device,
-        m_renderer.getSwapChainRenderPass(),
-        m_globalSetLayout->getDescriptorSetLayout(),
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    m_sceneManager = std::make_unique<SceneManager>(m_window, m_device, m_globalSetLayout->getDescriptorSetLayout(), AABB{ -100,-100,100,100 });
 
     connect(&m_window, &MyVulkanWindow::drawAddVertex, this, &MyVulkanApp::onAddDrawVertex);
     connect(&m_window, &MyVulkanWindow::drawEnd, this, &MyVulkanApp::onDrawEnd);
@@ -124,7 +110,9 @@ void MyVulkanApp::run()
             if (!m_window.isExposed())
                 return;
 
-            float aspect = m_renderer.getAspectRatio();
+            Renderer& renderer = m_sceneManager->getRenderManager().getRenderer();
+
+            float aspect = renderer.getAspectRatio();;
             m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.001f, 200.f);
 
             //TODO:检查这里的帧时间的问题，好像MAX_FRAME_TIME 会失效？
@@ -146,21 +134,20 @@ void MyVulkanApp::run()
                 m_mouseController.zoom(ndcAndSteps, frameTime);
                 });
             //render
-            if (auto commandBuffer = m_renderer.beginFrame())
+            if (auto commandBuffer = renderer.beginFrame())
             {
                 //update
                 vkCmdResetQueryPool(commandBuffer, m_timestampQueryPool, 0, TIMESTAMP_QUERIES);
                 vkCmdResetQueryPool(commandBuffer, m_statsQueryPool, 0, STATS_QUERIES);
 
 
-                int frameIndex = m_renderer.getFrameIndex();
+                int frameIndex = renderer.getFrameIndex();
                 FrameInfo frameInfo{
                     frameIndex,
                     frameTime,
                     commandBuffer,
                     m_camera,
-                    m_globalDescriptSets[frameIndex],
-                    m_renderer
+                    m_globalDescriptSets[frameIndex]
                 };
 
                 auto metaData = (m_camera.getProjection() * m_camera.getView()).constData();
@@ -177,19 +164,20 @@ void MyVulkanApp::run()
                 //render
                // 同时开启管线统计
                 vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
-                m_renderer.beginSwapChainRenderPass(commandBuffer);
+                renderer.beginSwapChainRenderPass(commandBuffer);
 
+                m_sceneManager->render(frameInfo);
                 //m_pointRenderSystem->renderScene(frameInfo, m_scene);
-                m_lineRenderSystem->renderScene(frameInfo, m_scene);
+                //m_lineRenderSystem->renderScene(frameInfo, m_scene);
                 //m_polygonRenderSystem->renderScene(frameInfo, m_scene);
 
-                m_renderer.endSwapChainRenderPass(commandBuffer);
+                renderer.endSwapChainRenderPass(commandBuffer);
                 vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
                 vkCmdWriteTimestamp(commandBuffer,
                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                     m_timestampQueryPool, 1);
 
-                m_renderer.endFrame();
+                renderer.endFrame();
 
                 readbackQueryResults();
             }
@@ -244,7 +232,7 @@ void MyVulkanApp::loadObjects()
     std::string strPath = "E:\\Kontur_prj.gdb";
     computeGeoBounds(strPath);
     loadShpObjects(strPath);
-    m_scene.finish();
+    //m_scene.finish();
 }
 
 void MyVulkanApp::loadShpObjects(const std::string path)
@@ -273,7 +261,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
         count++;
         OGRFeature::DestroyFeature(feature);
 #ifdef LIMIT
-        if (count == 200000)
+        if (count == 100000)
             break;
 #endif
     }
@@ -308,13 +296,25 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
             if (nPts < 2)
                 continue;
 
-            Model::Builder builder;
+            AABB  boundingBox{ std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
+                -std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity() };
+
+
+
+            Object::Builder builder{};
             builder.type = ModelType::Line;
             for (int i = 0; i < nPts; i++)
             {
                 double x = ls->getX(i);
                 double y = ls->getY(i);
-                builder.vertices.push_back(geoToNDC(x, y));
+
+                auto ver = geoToNDC(x, y);
+
+                boundingBox.minX = qMin(boundingBox.minX, ver.position.x());
+                boundingBox.minY = qMin(boundingBox.minY, ver.position.y());
+                boundingBox.maxX = qMax(boundingBox.maxX, ver.position.x());
+                boundingBox.maxY = qMax(boundingBox.maxY, ver.position.y());
+                builder.vertices.push_back(ver);
             }
 
             for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i)
@@ -323,14 +323,10 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
                 builder.indices.push_back(i + 1);
             }
 
-            auto geoModel = std::make_shared<Model>(m_device, builder);
-
-            auto object = Object::createObject();
-            object.setColor({ 1,0,0 });
-            object.setModel(geoModel);
-            object.setTranlation({ 0.f,0.f,2.5f });
-
-            m_scene.addObject(std::move(object));
+            builder.color = QVector3D{ 1.f,0.f,0.f };
+            builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
+            builder.bounds = boundingBox;
+            m_sceneManager->addObject(builder);
         }
     }
     break;

@@ -9,32 +9,40 @@
 #include "Buffer.h"
 #include "FrameInfo.h"
 
+using UpdateCallback = std::function<void(Object*)>;
+using UpdateFunc = std::function<void(Object&)>;
+
 class ObjectManager
 {
 public:
     ObjectManager(Device& device, const AABB& worldBounds);
-    ~ObjectManager();
+    ~ObjectManager() = default;
 
-    Object::ObjectID addObject(Object&& object);
+    Object::ObjectID createObject(const Object::Builder& builder, uint32_t chunkId);
     void removeObject(Object::ObjectID id);
-    void updateObject(Object::ObjectID id, const std::function<void(Object&)>& updateFunc);
-
+    void updateObject(Object::ObjectID id, const UpdateFunc& updateFunc);
 
 
     Object* getObject(Object::ObjectID id);
-    std::vector<Object*>    getObjectInBounds(const AABB& bounds);
-    std
+    std::vector<Object*> getVisibleObjects(const AABB& bounds);
+    std::vector<Object*> getObjectByType(ModelType type);
+    std::vector<Object*> getAllObjects();
+
+    void setObjectUpdateCallback(UpdateCallback&& callback)
+    {
+        m_updateCallback = std::move(callback);
+    }
+
+private:
+    void onObjectUpdate(Object* object);
 
 private:
     Device& m_device;
     QuadTree                                        m_spatialIndex;
     std::unordered_map<Object::ObjectID, Object>    m_objects;
 
-    VkCommandPool                                   m_commandPool;
+    UpdateCallback                                  m_updateCallback{ nullptr };
 
-    void createCommandPool();
-    void onObjectUpdate(Object* object);
 
-    void invalidateAffectedBatches(Object* object);
 };
 

@@ -37,28 +37,28 @@ Model::~Model()
 }
 
 
-void Model::bind(VkCommandBuffer commandBuffer)
-{
-    VkBuffer buffers[] = { m_vertexBuffer->getBuffer() };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
-
-    if (m_hasIndexBuffer)
-    {
-        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
-    }
-}
-void Model::draw(VkCommandBuffer commandBuffer, const Camera& camera)
-{
-    if (!m_hasIndexBuffer)
-    {
-        vkCmdDraw(commandBuffer, m_vertexCount, 1, 0, 0);
-    }
-    else
-    {
-        vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
-    }
-}
+//void Model::bind(VkCommandBuffer commandBuffer)
+//{
+//    VkBuffer buffers[] = { m_vertexBuffer->getBuffer() };
+//    VkDeviceSize offsets[] = { 0 };
+//    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+//
+//    if (m_hasIndexBuffer)
+//    {
+//        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+//    }
+//}
+//void Model::draw(VkCommandBuffer commandBuffer, const Camera& camera)
+//{
+//    if (!m_hasIndexBuffer)
+//    {
+//        vkCmdDraw(commandBuffer, m_vertexCount, 1, 0, 0);
+//    }
+//    else
+//    {
+//        vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
+//    }
+//}
 
 std::vector<VkVertexInputBindingDescription> Model::Vertex::getBindingDescription()
 {
@@ -85,67 +85,68 @@ std::vector<VkVertexInputAttributeDescription> Model::Vertex::getAttributeDescri
 
     return attributeDesciption;
 }
-void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
-{
-    //assert(m_vertexCount >= 3 && "Vertex Count must be at lease 3");
 
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * m_vertexCount;
-
-    uint32_t vertexSize = sizeof(vertices[0]);
-
-    VMABuffer stagingBuffer(
-        m_device,
-        vertexSize,
-        m_vertexCount,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU
-    );
-
-    stagingBuffer.map();
-    stagingBuffer.writeToBuffer((void*)vertices.data());
-
-    m_vertexBuffer = std::make_shared<VMABuffer>(
-        m_device,
-        vertexSize,
-        m_vertexCount,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
-    );
-
-
-    m_device.copyBuffer(stagingBuffer.getBuffer(), m_vertexBuffer->getBuffer(), bufferSize);
-}
-
-void Model::createIndexBuffers(const std::vector<uint32_t>& indices)
-{
-    m_hasIndexBuffer = m_indexCount > 0;
-    //assert(m_indexCount >= 3 && "Vertex Count must be at lease 3");
-
-    if (!m_hasIndexBuffer)
-        return;
-
-    VkDeviceSize bufferSize = sizeof(indices[0]) * m_indexCount;
-    uint32_t indexSize = sizeof(indices[0]);
-
-    VMABuffer stagingBuffer{
-           m_device,
-           indexSize,
-           m_indexCount,
-           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-           VMA_MEMORY_USAGE_CPU_TO_GPU
-    };
-
-    stagingBuffer.map();
-    stagingBuffer.writeToBuffer((void*)indices.data());
-
-
-    m_indexBuffer = std::make_shared<VMABuffer>(
-        m_device,
-        indexSize,
-        m_indexCount,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
-    );
-
-    m_device.copyBuffer(stagingBuffer.getBuffer(), m_indexBuffer->getBuffer(), bufferSize);
-}
+//void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
+//{
+//    //assert(m_vertexCount >= 3 && "Vertex Count must be at lease 3");
+//
+//    VkDeviceSize bufferSize = sizeof(vertices[0]) * m_vertexCount;
+//
+//    uint32_t vertexSize = sizeof(vertices[0]);
+//
+//    VMABuffer stagingBuffer(
+//        m_device,
+//        vertexSize,
+//        m_vertexCount,
+//        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+//        VMA_MEMORY_USAGE_CPU_TO_GPU
+//    );
+//
+//    stagingBuffer.map();
+//    stagingBuffer.writeToBuffer((void*)vertices.data());
+//
+//    m_vertexBuffer = std::make_shared<VMABuffer>(
+//        m_device,
+//        vertexSize,
+//        m_vertexCount,
+//        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+//        VMA_MEMORY_USAGE_GPU_ONLY
+//    );
+//
+//
+//    m_device.copyBuffer(stagingBuffer.getBuffer(), m_vertexBuffer->getBuffer(), bufferSize);
+//}
+//
+//void Model::createIndexBuffers(const std::vector<uint32_t>& indices)
+//{
+//    m_hasIndexBuffer = m_indexCount > 0;
+//    //assert(m_indexCount >= 3 && "Vertex Count must be at lease 3");
+//
+//    if (!m_hasIndexBuffer)
+//        return;
+//
+//    VkDeviceSize bufferSize = sizeof(indices[0]) * m_indexCount;
+//    uint32_t indexSize = sizeof(indices[0]);
+//
+//    VMABuffer stagingBuffer{
+//           m_device,
+//           indexSize,
+//           m_indexCount,
+//           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+//           VMA_MEMORY_USAGE_CPU_TO_GPU
+//    };
+//
+//    stagingBuffer.map();
+//    stagingBuffer.writeToBuffer((void*)indices.data());
+//
+//
+//    m_indexBuffer = std::make_shared<VMABuffer>(
+//        m_device,
+//        indexSize,
+//        m_indexCount,
+//        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+//        VMA_MEMORY_USAGE_GPU_ONLY
+//    );
+//
+//    m_device.copyBuffer(stagingBuffer.getBuffer(), m_indexBuffer->getBuffer(), bufferSize);
+//}

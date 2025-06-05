@@ -11,7 +11,5 @@ struct FrameInfo
     VkCommandBuffer commandBuffer;
     Camera& camera;
     VkDescriptorSet globalDescriptorSet;
-    Renderer& renderer;
-
 };
 

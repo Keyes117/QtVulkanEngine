@@ -9,12 +9,12 @@
 
 enum class ModelType
 {
+
     Point = 0,
     Line,
-    Polygon
+    Polygon,
+    None
 };
-
-
 
 class Model
 {

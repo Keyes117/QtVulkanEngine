@@ -129,7 +129,6 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Descriptors.cpp" />
     <ClCompile Include="FrameInfo.cpp" />
-    <ClCompile Include="Layer.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Movement_Controller.cpp" />
     <ClCompile Include="MyVulkanApp.cpp" />
@@ -141,7 +140,6 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderManager.cpp" />
     <ClCompile Include="RenderSystem.cpp" />
-    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="vk_mem_alloc.cpp" />
@@ -160,7 +158,6 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClInclude Include="Descriptors.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="FrameInfo.h" />
-    <ClInclude Include="Layer.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Movement_Controller.h" />
     <ClInclude Include="MyVulkanApp.h" />
@@ -174,7 +171,6 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClInclude Include="Pipeline.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderSystem.h" />
-    <ClInclude Include="Scene.h" />
     <ClInclude Include="SwapChain.h" />
     <QtMoc Include="MyVulkanWindow.h" />
   </ItemGroup>
