@@ -7,8 +7,9 @@
 #include "Buffer.h"
 #include "Movement_Controller.h"
 #include "Object.h"
-//#define EXPEND_100
-#define LIMIT
+#include "const.h"
+#define EXPEND_100
+//#define LIMIT
 
 
 #ifdef max
@@ -31,7 +32,6 @@ struct GlobalUbo
 MyVulkanApp::MyVulkanApp() :
     m_window(m_widget.getVulkanWindowHandle()),
     m_cameraObject(Object::createObject()),
-    m_previewObject(Object::createObject()),
     m_keyBoardController(m_cameraObject, m_camera),
     m_mouseController(m_cameraObject, m_camera),
     m_device(m_window)
@@ -290,44 +290,57 @@ void MyVulkanApp::parseFeature(OGRGeometry* geom)
         auto mls = geom->toMultiLineString();
 
         // 对于每一条 LineString
-        for (int iLine = 0; iLine < mls->getNumGeometries(); ++iLine) {
+        for (int iLine = 0; iLine < mls->getNumGeometries(); ++iLine)
+        {
             auto ls = mls->getGeometryRef(iLine)->toLineString();
             int nPts = ls->getNumPoints();
             if (nPts < 2)
                 continue;
 
-            AABB  boundingBox{ std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
-                -std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity() };
-
-
-
-            Object::Builder builder{};
-            builder.type = ModelType::Line;
-            for (int i = 0; i < nPts; i++)
-            {
-                double x = ls->getX(i);
-                double y = ls->getY(i);
-
-                auto ver = geoToNDC(x, y);
-
-                boundingBox.minX = qMin(boundingBox.minX, ver.position.x());
-                boundingBox.minY = qMin(boundingBox.minY, ver.position.y());
-                boundingBox.maxX = qMax(boundingBox.maxX, ver.position.x());
-                boundingBox.maxY = qMax(boundingBox.maxY, ver.position.y());
-                builder.vertices.push_back(ver);
+            // === 核心改进：智能分段处理 ===
+            if (nPts > CONTOUR_SEGMENT_THRESHOLD) {
+                qDebug() << "Segmenting large contour with" << nPts << "points";
+                createSegmentedContour(ls, nPts);
             }
-
-            for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i)
-            {
-                builder.indices.push_back(i);
-                builder.indices.push_back(i + 1);
+            else {
+                createSingleContour(ls, nPts);
             }
-
-            builder.color = QVector3D{ 1.f,0.f,0.f };
-            builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
-            builder.bounds = boundingBox;
-            m_sceneManager->addObject(builder);
         }
+
+
+        /*   AABB  boundingBox{ std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
+               -std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity() };
+
+
+
+           Object::Builder builder{};
+           builder.type = ModelType::Line;
+           for (int i = 0; i < nPts; i++)
+           {
+               double x = ls->getX(i);
+               double y = ls->getY(i);
+
+               auto ver = geoToNDC(x, y);
+               ver.color = { 1.f,0.f,0.f };
+
+               boundingBox.minX = qMin(boundingBox.minX, ver.position.x());
+               boundingBox.minY = qMin(boundingBox.minY, ver.position.y());
+               boundingBox.maxX = qMax(boundingBox.maxX, ver.position.x());
+               boundingBox.maxY = qMax(boundingBox.maxY, ver.position.y());
+               builder.vertices.push_back(ver);
+           }
+
+           for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i)
+           {
+               builder.indices.push_back(i);
+               builder.indices.push_back(i + 1);
+           }
+
+           builder.color = QVector3D{ 1.f,0.f,0.f };
+           builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
+           builder.bounds = boundingBox;
+           m_sceneManager->addObject(builder);*/
+
     }
     break;
     case wkbPolygon:
@@ -452,5 +465,98 @@ void MyVulkanApp::readbackQueryResults()
 
     qDebug() << QString().asprintf("[GPU] VS invocations: %llu, FS invocations: %llu\n",
         stats.vsInvocs, stats.fsInvocs);
+}
+
+void MyVulkanApp::createSegmentedContour(OGRLineString* ls, int nPts)
+{
+    const int segmentSize = CONTOUR_SEGMENT_SIZE;
+    const int overlap = CONTOUR_OVERLAP_POINTS;
+
+    for (int startIdx = 0; startIdx < nPts - 1; startIdx += segmentSize - overlap) {
+        int endIdx = qMin(startIdx + segmentSize - 1, nPts - 1);
+
+        // 确保最后一段有足够的点
+        if (endIdx - startIdx < overlap + 1 && startIdx > 0) {
+            break; // 最后的小段合并到前一段
+        }
+
+        Object::Builder builder{};
+        builder.type = ModelType::Line;
+
+        AABB segmentBounds{
+            std::numeric_limits<float>::infinity(),
+            std::numeric_limits<float>::infinity(),
+            -std::numeric_limits<float>::infinity(),
+            -std::numeric_limits<float>::infinity()
+        };
+
+        // 构建段的顶点
+        for (int i = startIdx; i <= endIdx; i++) {
+            double x = ls->getX(i);
+            double y = ls->getY(i);
+
+            auto vertex = geoToNDC(x, y);
+            vertex.color = { 1.f, 0.f, 0.f };
+
+            segmentBounds.minX = qMin(segmentBounds.minX, vertex.position.x());
+            segmentBounds.minY = qMin(segmentBounds.minY, vertex.position.y());
+            segmentBounds.maxX = qMax(segmentBounds.maxX, vertex.position.x());
+            segmentBounds.maxY = qMax(segmentBounds.maxY, vertex.position.y());
+
+            builder.vertices.push_back(vertex);
+        }
+
+        // 构建段的索引
+        for (int i = 0; i < endIdx - startIdx; i++) {
+            builder.indices.push_back(i);
+            builder.indices.push_back(i + 1);
+        }
+
+        builder.color = QVector3D{ 1.f, 0.f, 0.f };
+        builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
+        builder.bounds = segmentBounds;
+
+        m_sceneManager->addObject(builder);
+        if (endIdx >= nPts - 1) break;
+    }
+}
+
+void MyVulkanApp::createSingleContour(OGRLineString* ls, int nPts)
+{
+    AABB boundingBox{
+      std::numeric_limits<float>::infinity(),
+      std::numeric_limits<float>::infinity(),
+      -std::numeric_limits<float>::infinity(),
+      -std::numeric_limits<float>::infinity()
+    };
+
+    Object::Builder builder{};
+    builder.type = ModelType::Line;
+
+    for (int i = 0; i < nPts; i++)
+    {
+        double x = ls->getX(i);
+        double y = ls->getY(i);
+
+        auto ver = geoToNDC(x, y);
+        ver.color = { 1.f, 0.f, 0.f };
+
+        boundingBox.minX = qMin(boundingBox.minX, ver.position.x());
+        boundingBox.minY = qMin(boundingBox.minY, ver.position.y());
+        boundingBox.maxX = qMax(boundingBox.maxX, ver.position.x());
+        boundingBox.maxY = qMax(boundingBox.maxY, ver.position.y());
+        builder.vertices.push_back(ver);
+    }
+
+    for (uint32_t i = 0; i + 1 < static_cast<uint32_t>(nPts); ++i)
+    {
+        builder.indices.push_back(i);
+        builder.indices.push_back(i + 1);
+    }
+
+    builder.color = QVector3D{ 1.f, 0.f, 0.f };
+    builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
+    builder.bounds = boundingBox;
+    m_sceneManager->addObject(builder);
 }
 

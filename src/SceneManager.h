@@ -4,15 +4,17 @@
 #include "RenderManager.h"
 #include "FrameInfo.h"
 
+#include "GpuFrustumCuller.h"
+
 class SceneManager
 {
 public:
     SceneManager(MyVulkanWindow& window, Device& device, VkDescriptorSetLayout globalSetLayout, const AABB& worldBounds);
     ~SceneManager() = default;
 
-    /*¶ÔÏó¹ÜÀí*/
+    /*å¯¹è±¡ç®¡ç†*/
     Object::ObjectID addObject(const Object::Builder& builder);
-    //TODO: ¸üĞÂºÍÉ¾³ı½Ó¿Ú
+    //TODO: æ›´æ–°å’Œåˆ é™¤æ¥å£
     //void removeObject(Object::ObjectID id);
     //void updateObject(Object::ObjectID id,const UpdateFunc& updateFunc);
 
@@ -23,10 +25,29 @@ public:
 
 
 private:
-    void onObjectChanged(Object* object);
+    void onObjectChanged(const std::shared_ptr<Object>& object);
 
 private:
+
+
     ObjectManager m_objectManager;
     RenderManager m_renderManager;
+
+    std::unique_ptr<GpuFrustumCuller> m_gpuCuller;
+
+    struct RenderStatus
+    {
+        size_t totalObjects = 0;
+        size_t visibleObjects = 0;
+        float cullingTime = 0.f;
+        float renderTime = 0.0f;
+
+        bool useGPUCulling = false;
+        bool useCPUCulling = true;
+    };
+
+    mutable RenderStatus m_stats;
+    void updateRenderStats(const std::vector<std::shared_ptr<Object>>& visibleObjects);
+    void printRenderStats() const;
 };
 

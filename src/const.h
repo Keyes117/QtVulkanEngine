@@ -31,3 +31,14 @@ struct AABB
             maxY < other.minY || minY > other.maxY);
     }
 };
+
+struct InstanceData
+{
+    alignas(16) float transform[16];  // 4x4矩阵，16字节对齐
+    alignas(16) float color[3];       // RGB颜色
+    float padding;                    // 填充到16字节对齐
+};
+
+constexpr int CONTOUR_SEGMENT_THRESHOLD = 200;  // 超过200个点就分段
+constexpr int CONTOUR_SEGMENT_SIZE = 150;       // 每段150个点
+constexpr int CONTOUR_OVERLAP_POINTS = 2;       // 段间重叠2个点保证连续性

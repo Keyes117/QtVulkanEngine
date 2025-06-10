@@ -1,0 +1,101 @@
+#version 450
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct ObjectData
+{
+    mat4 transform;
+    vec4 boundingBox;
+    uint chunkId;
+    uint modelType;
+    uint visible;
+    uint padding;
+};
+
+struct CameraData
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec4 frustumPlanes[6];
+    vec3 cameraPos;
+    float nearPlane;
+    float farPlane;
+    uint padding[3];
+};
+
+layout(set = 0, binding = 0) restrict buffer ObjectBuffer
+{
+    ObjectData objects[];
+} objectBuffer;
+
+layout(set = 0, binding = 1) restrict readonly buffer CameraBuffer
+{
+    CameraData camera;
+} cameraBuffer;
+
+layout(set = 0, binding = 2) restrict writeonly buffer ResultBuffer
+{
+    uint visibleChunkIds[];
+} resultBuffer;
+
+layout(set = 0, binding = 3) restrict buffer CountBuffer
+{
+    uint visibleCount;
+} countBuffer;
+
+layout(push_constant) uniform PushConstants
+{
+    uint totalObjects;
+} push;
+
+bool aabbInFrustum(vec4 boundingBox)
+{
+    vec2 minXY = boundingBox.xy;  // minX, minY
+    vec2 maxXY = boundingBox.zw;  // maxX, maxY
+    
+    // 对于2D渲染，只检查左、右、上、下四个视锥面
+    for (int i = 0; i < 4; i++) {
+        vec4 plane = cameraBuffer.camera.frustumPlanes[i];
+        
+        // 计算AABB在该平面方向上的最远点（只考虑XY）
+        vec2 farPoint = mix(minXY, maxXY, greaterThan(plane.xy, vec2(0.0)));
+        
+        // 计算距离（使用固定的Z值进行2D测试）
+        float distance = dot(plane.xy, farPoint) + plane.w;
+        
+        // 如果最远点都在平面外侧，则完全被剔除
+        if (distance < 0.0) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+    
+    // 边界检查
+    if (index >= push.totalObjects) {
+        return;
+    }
+    
+    // 获取对象数据
+    ObjectData obj = objectBuffer.objects[index];
+    
+    // 执行视锥剔除
+    bool visible = aabbInFrustum(obj.boundingBox);
+
+
+    // 更新可见性
+    objectBuffer.objects[index].visible = visible ? 1u : 0u;
+    
+    // 如果可见，添加到结果列表
+    if (visible) {
+        uint resultIndex = atomicAdd(countBuffer.visibleCount, 1u);
+        if (resultIndex < push.totalObjects) {  
+            resultBuffer.visibleChunkIds[resultIndex] = obj.chunkId;
+        }
+    }
+}

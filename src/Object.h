@@ -15,7 +15,7 @@ struct TransformComponent
 {
     QVector3D translation{}; // position offset
     QVector3D scale{ 1.f,1.f,1.f };
-    QVector3D rotation;
+    QVector3D rotation{ 0.f,0.f,0.f };
 
     QMatrix4x4 mat4f() {
 
@@ -53,11 +53,11 @@ struct TransformComponent
 
 };
 
-class Object
+class Object : public std::enable_shared_from_this<Object>
 {
 public:
     using ObjectID = uint64_t;
-    using UpdateCallback = std::function<void(Object*)>;
+    using UpdateCallback = std::function<void(const std::shared_ptr<Object>&)>;
 
     struct Builder
     {
@@ -81,16 +81,14 @@ public:
         All = Translation | Scale | Rotation | Color | Model | Visibility
     };
 
-    static Object createObject()
+    static std::shared_ptr<Object> createObject()
     {
         static ObjectID currentId = 0;
-        return Object(currentId++);
+        struct make_shared_enabler : public Object {
+            make_shared_enabler(ObjectID id) : Object(id) {}
+        };
+        return std::make_shared<make_shared_enabler>(currentId++);
     }
-
-    Object() {
-
-    }
-    Object(ObjectID objID) :m_id(objID) {}
 
     ObjectID getId() { return m_id; }
 
@@ -162,14 +160,14 @@ public:
         m_model = model;
     }
 
-    void setUpdateCallback(std::function<void(Object*)>&& callback)
+    void setUpdateCallback(UpdateCallback&& callback)
     {
         m_updateCallback = std::move(callback);
     }
 
 private:
 
-
+    Object(ObjectID objID) :m_id(objID) {}
     QVector3D   m_color{};
     TransformComponent m_transform{};
     uint32_t    m_chunkId{ 0 };
@@ -183,7 +181,7 @@ private:
     {
         m_updateFlags |= static_cast<uint32_t>(type);
         if (m_updateCallback)
-            m_updateCallback(this);
+            m_updateCallback(shared_from_this());
     }
 
 };

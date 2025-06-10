@@ -304,7 +304,12 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
     vertexStagingBuffer.map();
     vertexStagingBuffer.writeToBuffer(const_cast<void*>(static_cast<const void*>(vertices.data())));
 
-    m_device.copyBuffer(vertexStagingBuffer.getBuffer(), segment->vertexBuffer->getBuffer(), vertexDataSize);
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = vertexOffset * sizeof(Model::Vertex);  // 使用正确的偏移量
+    copyRegion.size = vertexDataSize;
+
+    m_device.copyBufferWithInfo(vertexStagingBuffer.getBuffer(), segment->vertexBuffer->getBuffer(), copyRegion);
 
     if (!indices.empty())
     {
@@ -321,7 +326,12 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
         indexStagingBuffer.map();
         indexStagingBuffer.writeToBuffer(const_cast<void*>(static_cast<const void*>(indices.data())));
 
-        m_device.copyBuffer(indexStagingBuffer.getBuffer(), segment->indexBuffer->getBuffer(), indexDataSize);
+        VkBufferCopy indexCopyRegion{};
+        indexCopyRegion.srcOffset = 0;
+        indexCopyRegion.dstOffset = indexOffset * sizeof(uint32_t);  // 使用正确的偏移量
+        indexCopyRegion.size = indexDataSize;
+
+        m_device.copyBufferWithInfo(indexStagingBuffer.getBuffer(), segment->indexBuffer->getBuffer(), indexCopyRegion);
     }
 
 

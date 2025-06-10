@@ -8,23 +8,26 @@ ObjectManager::ObjectManager(Device& device, const AABB& worldBounds)
 
 Object::ObjectID ObjectManager::createObject(const Object::Builder& builder, uint32_t chunkId)
 {
-    //²úÉúÒ»¸öObject
-    Object object = Object::createObject();
+    //äº§ç”Ÿä¸€ä¸ªObject
+    auto object = Object::createObject();
 
-    //ÀûÓÃObjectBuilderÖĞµÄĞÅÏ¢ Ìî³äModelBuidler ²¢ÇÒ¹¹½¨model
+    //åˆ©ç”¨ObjectBuilderä¸­çš„ä¿¡æ¯ å¡«å……ModelBuidler å¹¶ä¸”æ„å»ºmodel
     Model::Builder modelBuilder;
     modelBuilder.vertices = builder.vertices;
     modelBuilder.indices = builder.indices;
     modelBuilder.type = builder.type;
     auto model = std::make_shared<Model>(m_device, modelBuilder);
 
-    //ÉèÖÃobject
-    object.setModel(model);
-    auto id = object.getId();
+    //è®¾ç½®object
+    object->setColor(builder.color);
+    object->setTransform(builder.transform);
+    object->setModel(model);
+    object->setChunkId(chunkId);
+    auto id = object->getId();
     m_objects[id] = object;
-    m_spatialIndex.insert(&object);
+    m_spatialIndex.insert(object);
 
-    object.setUpdateCallback(std::bind(&ObjectManager::onObjectUpdate, this, &object));
+    object->setUpdateCallback(std::bind(&ObjectManager::onObjectUpdate, this, object));
 
     return id;
 }
@@ -34,7 +37,7 @@ void ObjectManager::removeObject(Object::ObjectID id)
     auto it = m_objects.find(id);
     if (it != m_objects.end())
     {
-        m_spatialIndex.remove(&it->second);
+        m_spatialIndex.remove(it->second);
 
         m_objects.erase(it);
     }
@@ -48,63 +51,66 @@ void ObjectManager::updateObject(Object::ObjectID id, const UpdateFunc& updateFu
     {
         auto& object = it->second;
 
-        //ÁÙÊ±ÒÆ³ıobject
-        m_spatialIndex.remove(&object);
+        //ä¸´æ—¶ç§»é™¤object
+        m_spatialIndex.remove(object);
 
         updateFunc(object);
 
-        //ÖØĞÂÌí¼Ó
-        m_spatialIndex.insert(&object);
+        //é‡æ–°æ·»åŠ 
+        m_spatialIndex.insert(object);
 
     }
 }
 
-Object* ObjectManager::getObject(Object::ObjectID id)
+std::shared_ptr<Object> ObjectManager::getObject(Object::ObjectID id)
 {
     auto it = m_objects.find(id);
-    return (it != m_objects.end()) ? &it->second : nullptr;
+    return (it != m_objects.end()) ? it->second : nullptr;
 }
 
-std::vector<Object*> ObjectManager::getVisibleObjects(const AABB& bounds)
+std::vector<std::shared_ptr<Object>> ObjectManager::getVisibleObjects(const AABB& bounds)
 {
     return m_spatialIndex.query(bounds);
 }
 
-std::vector<Object*> ObjectManager::getObjectByType(ModelType type)
+std::vector<std::shared_ptr<Object>> ObjectManager::getObjectByType(ModelType type)
 {
-    std::vector<Object*> result;
+    std::vector<std::shared_ptr<Object>> result;
 
     for (auto& [id, object] : m_objects)
     {
-        if (object.getModel()->type() == type)
+        if (object->getModel()->type() == type)
         {
-            result.push_back(&object);
+            result.push_back(object);
         }
     }
 
     return result;
 }
 
-std::vector<Object*> ObjectManager::getAllObjects()
+std::vector<std::shared_ptr<Object>> ObjectManager::getAllObjects()
 {
-    std::vector<Object*> result;
+    std::vector<std::shared_ptr<Object>> result;
     result.reserve(m_objects.size());
 
     for (auto& [id, object] : m_objects) {
-        result.push_back(&object);
+        result.push_back(object);
     }
 
     return result;
 }
 
-void ObjectManager::onObjectUpdate(Object* object)
+void ObjectManager::onObjectUpdate(const std::shared_ptr<Object>& object)
 {
     if (object && object->needsUpdate())
     {
-        //¿Õ¼äË÷Òı¸üĞÂ
+        // å…ˆä»ç©ºé—´ç´¢å¼•ä¸­åˆ é™¤
+        m_spatialIndex.remove(object);
+
+        // é‡æ–°æ’å…¥åˆ°æ–°ä½ç½®
         m_spatialIndex.insert(object);
 
-        //Í¨ÖªÉÏ²ã¹ÜÀíÆ÷
+        // é€šçŸ¥ä¸Šå±‚ç®¡ç†å™¨
         if (m_updateCallback)
             m_updateCallback(object);
 

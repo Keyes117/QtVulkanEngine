@@ -58,6 +58,9 @@ private:
     void destroyQueryPools();
     void readbackQueryResults();
 
+    void createSegmentedContour(OGRLineString* ls, int nPts);
+    void createSingleContour(OGRLineString* ls, int nPts);
+
 private:
 
     float                                                   m_minX = std::numeric_limits<float>::infinity();
@@ -71,14 +74,11 @@ private:
     std::chrono::high_resolution_clock::time_point          m_lastFrameTime;
     MyVulkanWidget                                          m_widget;               //窗口类，后续考虑跟window一样改成引用
     MyVulkanWindow& m_window;                                                       //控制窗口中的vulkan 窗口
-    Keyboard_Movement_Controller                            m_keyBoardController;
-    Mouse_Movement_Controller                               m_mouseController;
-
-    Object                                                  m_cameraObject;
-    Object                                                  m_previewObject;
+    std::shared_ptr<Object>                                 m_cameraObject;
     Camera                                                  m_camera;               //相机类
     Device                                                  m_device;               //负责初始化Vulkan基础组件
-
+    Keyboard_Movement_Controller                            m_keyBoardController;
+    Mouse_Movement_Controller                               m_mouseController;
     std::unique_ptr<SceneManager>                           m_sceneManager;
 
     //Scene                                                   m_scene;

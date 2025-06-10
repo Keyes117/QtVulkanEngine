@@ -6,6 +6,12 @@
 #include "Device.h"
 #include "Model.h"
 
+enum class PipelineType
+{
+    Graphics,
+    Compute
+};
+
 struct PipelineConfigInfo
 {
 
@@ -26,6 +32,14 @@ struct PipelineConfigInfo
     VkPipelineLayout pipelineLayout = nullptr;
     VkRenderPass renderPass = nullptr;
     uint32_t subpass = 0;
+};
+
+struct ComputePipelineConfigInfo
+{
+    ComputePipelineConfigInfo(const ComputePipelineConfigInfo&) = delete;
+    ComputePipelineConfigInfo& operator=(const ComputePipelineConfigInfo&) = delete;
+
+    VkPipelineLayout pipelineLayout = nullptr;
 };
 
 class Pipeline

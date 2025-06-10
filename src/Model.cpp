@@ -63,9 +63,15 @@ Model::~Model()
 std::vector<VkVertexInputBindingDescription> Model::Vertex::getBindingDescription()
 {
     std::vector<VkVertexInputBindingDescription> bindingDescription(1);
+
+
     bindingDescription[0].binding = 0;
     bindingDescription[0].stride = sizeof(Vertex);
     bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    //bindingDescription[1].binding = 1;
+    //bindingDescription[1].stride = sizeof(InstanceData);
+    //bindingDescription[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
     return bindingDescription;
 }
@@ -82,6 +88,19 @@ std::vector<VkVertexInputAttributeDescription> Model::Vertex::getAttributeDescri
     attributeDesciption[1].location = 1;
     attributeDesciption[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDesciption[1].offset = offsetof(Vertex, color);
+
+    //for (int i = 0; i < 4; ++i) {
+    //    attributeDesciption[2 + i].binding = 1;
+    //    attributeDesciption[2 + i].location = 2 + i;
+    //    attributeDesciption[2 + i].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    //    attributeDesciption[2 + i].offset = offsetof(InstanceData, transform) + i * sizeof(float) * 4;
+    //}
+
+    //// ÊµÀýÑÕÉ«
+    //attributeDesciption[6].binding = 1;
+    //attributeDesciption[6].location = 6;
+    //attributeDesciption[6].format = VK_FORMAT_R32G32B32_SFLOAT;
+    //attributeDesciption[6].offset = offsetof(InstanceData, color);
 
     return attributeDesciption;
 }

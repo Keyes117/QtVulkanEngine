@@ -104,7 +104,7 @@ void Camera::setViewLocation(QVector3D position, QVector3D rotation)
 
 Camera::Frustum2D Camera::getFrustum2D() const
 {
-    QMatrix4x4 M = m_projectionMartrix * m_viewMatrix;
+    QMatrix4x4 M = m_projectionMartrix;
     Frustum2D f;
     auto extractPlane = [&](int rowA, int rowB, bool plus, Plane2D& pl)
         {
@@ -128,4 +128,41 @@ Camera::Frustum2D Camera::getFrustum2D() const
     extractPlane(1, 3, false, f.planes[3]);
 
     return f;
+}
+
+AABB Camera::getFrustumBound2D() const
+{
+    QMatrix4x4 invMVP = (m_projectionMartrix).inverted();
+
+    // NDC空间的角点
+    std::vector<QVector4D> ndcCorners = {
+        QVector4D(-1, -1, 0, 1), QVector4D(1, -1, 0, 1),
+        QVector4D(-1,  1, 0, 1), QVector4D(1,  1, 0, 1),
+        QVector4D(-1, -1, 1, 1), QVector4D(1, -1, 1, 1),
+        QVector4D(-1,  1, 1, 1), QVector4D(1,  1, 1, 1)
+    };
+
+    float minX = FLT_MAX, maxX = -FLT_MAX;
+    float minZ = FLT_MAX, maxZ = -FLT_MAX;
+
+    for (const auto& corner : ndcCorners) {
+        QVector4D worldPos = invMVP * corner;
+        if (std::abs(worldPos.w()) > 0.001f) {
+            worldPos /= worldPos.w();
+            minX = qMin(minX, worldPos.x());
+            maxX = qMax(maxX, worldPos.x());
+            minZ = qMin(minZ, worldPos.z());
+            maxZ = qMax(maxZ, worldPos.z());
+        }
+    }
+
+    // 添加合理的边界限制
+    const float maxBound = 10000.0f;
+    minX = qMax(minX, -maxBound);
+    maxX = qMin(maxX, maxBound);
+    minZ = qMax(minZ, -maxBound);
+    maxZ = qMin(maxZ, maxBound);
+
+    return AABB(minX, minZ, maxX, maxZ);
+
 }
