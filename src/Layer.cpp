@@ -135,6 +135,7 @@ void Layer::init()
 
     for (auto& obj : m_objects)
     {
+        if (obj.getModel()) {
         AABB b = obj.getBoundingBox();
         m_worldBounds.minX = std::min(m_worldBounds.minX, b.minX);
         m_worldBounds.minY = std::min(m_worldBounds.minY, b.minY);
@@ -143,6 +144,7 @@ void Layer::init()
 
         m_vertexCount += obj.getModel()->vertexCount();
         m_indexCount += obj.getModel()->indexCount();
+    }
     }
 
     vertices.reserve(m_vertexCount);
@@ -233,12 +235,14 @@ void Layer::assignObjectsToTiles()
 {
     for (auto& obj : m_objects)
     {
+        if (obj.getModel()) {
         AABB b = obj.getBoundingBox();
         for (auto& t : m_tiles)
         {
             if (b.overlaps(t.bounds))
             {
                 t.objects.push_back(&obj);
+                }
             }
         }
     }

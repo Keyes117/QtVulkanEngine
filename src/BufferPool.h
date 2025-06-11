@@ -51,7 +51,9 @@ public:
     std::vector<uint32_t> getVisibleChunks(const Camera& camera, ModelType type);
 
     void bindBuffersForType(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentId = 0);
+
     void drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint32_t instanceCount = 1);
+    void drawSegment(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentIndex);
 
     const Chunk* getChunk(uint32_t chunkId) const;
     ModelType getChunkType(uint32_t chunkId) const;

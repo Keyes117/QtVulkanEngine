@@ -1,4 +1,8 @@
-#include "RenderManager.h"
+ï»¿#include "RenderManager.h"
+
+#ifdef max
+#undef max
+#endif
 
 RenderManager::RenderManager(MyVulkanWindow& window, Device& device, VkDescriptorSetLayout globalSetLayout) :
     m_device(device),
@@ -48,77 +52,195 @@ void RenderManager::endSwapChainRenderPass(VkCommandBuffer commandBuffer)
     m_renderer.endSwapChainRenderPass(commandBuffer);
 }
 
+void RenderManager::renderFromDataPool(const ObjectManager::ObjectDataPool& dataPool, const std::unordered_map<uint32_t, std::vector<uint32_t>>& chunkToIndices, FrameInfo& frameInfo)
+{
+    auto frameStart = std::chrono::high_resolution_clock::now();
+
+    m_stats.reset();
+    if (chunkToIndices.empty())
+    {
+        return;
+    }
+
+    for (const auto& [chunkId, indices] : chunkToIndices)
+    {
+        if (chunkId == 0 || indices.empty())
+            continue;
+
+        ModelType modelType = getChunkModelType(chunkId);
+        if (modelType == ModelType::None)
+            continue;
+
+        RenderBatch& batch = getOrCreateBatch(chunkId, modelType);
+
+        updateBatch(batch, dataPool, indices);
+
+        uploadBatchToGPU(batch, dataPool, indices);
+
+        renderBatch(batch, frameInfo);
+
+        m_stats.activeBatches++;
+        m_stats.instancesRendered += static_cast<uint32_t>(indices.size());
+
+    }
+
+    m_currentFrame++;
+    auto frameEnd = std::chrono::high_resolution_clock::now();
+    m_stats.frameTime = std::chrono::duration<float, std::milli>(frameEnd - frameStart).count();
+
+
+    qDebug() << "SOARender - Frame:" << m_stats.frameTime << "ms, Batches:" << m_stats.activeBatches
+        << ", Instances:" << m_stats.instancesRendered << ", Draw calls:" << m_stats.drawCalls;
+    if (m_currentFrame % 60 == 0)
+    {
+
+    }
+
+}
+
 uint32_t RenderManager::allocateRenderBuffer(const Object::Builder& builder)
 {
     return m_BufferPool.allocateBuffer(builder);
 
 }
 
-void RenderManager::renderObjects(const std::vector<Object*>& objects, FrameInfo& frameInfo)
+void RenderManager::testRenderSegment(FrameInfo& frameInfo)
 {
-    if (objects.empty())
-        return;
 
-    //°´Chunk·Ö×é¶ÔÏó
-    std::unordered_map<uint32_t, std::vector<Object*>> objectsByChunk;
-    devideObjectByChunks(objectsByChunk, objects);
+    for (int i = 0; i < 4; ++i) {
+        ModelType type = static_cast<ModelType>(i);
 
-    renderObjectsByChunk(objectsByChunk, frameInfo);
+        auto* renderSystem = getRenderSystemByType(type);
+        if (!renderSystem) continue;
 
+        renderSystem->bind(frameInfo.commandBuffer);
+
+        // ğŸš€ ç»‘å®šå…¨å±€æè¿°ç¬¦é›†ï¼ˆç›¸æœºçŸ©é˜µç­‰ï¼‰
+        if (frameInfo.globalDescriptorSet != VK_NULL_HANDLE) {
+            vkCmdBindDescriptorSets(
+                frameInfo.commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                renderSystem->getPipelineLayout(),
+                0, 1, &frameInfo.globalDescriptorSet,
+                0, nullptr
+            );
+        }
+
+        // ğŸš€ ä¸€æ¬¡æ€§æ¸²æŸ“æ•´ä¸ªSegment
+        m_BufferPool.drawSegment(frameInfo.commandBuffer, type, 0);
+    }
 }
 
-void RenderManager::devideObjectByChunks(std::unordered_map<uint32_t, std::vector<Object*>>& objectsByChunk, const std::vector<Object*>& objects)
+void RenderManager::updateBatch(RenderBatch& batch, const ObjectManager::ObjectDataPool& dataPool, const std::vector<uint32_t>& indices)
 {
-    for (Object* obj : objects) {
-        if (obj && obj->getChunkID() != 0) {
-            objectsByChunk[obj->getChunkID()].push_back(obj);
+    auto updateStart = std::chrono::high_resolution_clock::now();
+
+    // âœ… æ™ºèƒ½è„æ£€æµ‹ - åªæœ‰çœŸæ­£æ”¹å˜æ—¶æ‰æ›´æ–°
+    bool needsUpdate = false;
+
+    // æ£€æŸ¥å®ä¾‹æ•°é‡å˜åŒ–
+    if (batch.instanceCount != indices.size()) {
+        needsUpdate = true;
+        batch.instanceCount = indices.size();
+    }
+
+    // æ£€æŸ¥ç´¢å¼•æ˜¯å¦å˜åŒ–
+    if (batch.lastIndices != indices) {
+        needsUpdate = true;
+        batch.lastIndices = indices;
+    }
+
+    // æ£€æŸ¥æ•°æ®æ˜¯å¦æœ‰æ›´æ–°æ ‡è®°
+    for (uint32_t index : indices) {
+        if (index < dataPool.m_count && dataPool.m_updateFlags[index] != 0) {
+            needsUpdate = true;
+            break;
         }
     }
+
+    batch.needsUpdate = needsUpdate;
+    batch.frameLastUsed = m_currentFrame;
+
+    auto updateEnd = std::chrono::high_resolution_clock::now();
+    batch.lastUpdateTime = std::chrono::duration<float, std::milli>(updateEnd - updateStart).count();
 }
 
-void RenderManager::renderObjectsByChunk(const std::unordered_map<uint32_t, std::vector<Object*>>& objectsByChunk, FrameInfo& frameInfo)
+void RenderManager::uploadBatchToGPU(RenderBatch& batch, const ObjectManager::ObjectDataPool& dataPool, const std::vector<uint32_t>& indices)
 {
-    for (const auto& [chunkId, chunkObjects] : objectsByChunk)
-    {
-        if (chunkId != 0 && !chunkObjects.empty())
-        {
-            renderChunkBatch(chunkId, chunkObjects, frameInfo);
+    if (!batch.needsUpdate) {
+        return;
+    }
+    auto uploadStart = std::chrono::high_resolution_clock::now();
+
+    if (indices.empty())
+        return;
+
+    size_t instanceCount = indices.size();
+    allocateBuffers(batch, instanceCount);
+
+    // é¢„åˆ†é…
+    static thread_local std::vector<float> transformData;
+    static thread_local std::vector<float> colorData;
+
+    transformData.clear();
+    colorData.clear();
+    transformData.reserve(instanceCount * ObjectManager::FLOAT_NUM_PER_TRANSFORM);
+    colorData.reserve(instanceCount * ObjectManager::FLOAT_NUM_PER_COLOR);
+
+    //æ•°æ®æ‹·è´
+    const float* transformBase = dataPool.m_transforms.data();
+    const float* colorBase = dataPool.m_colors.data();
+
+    for (uint32_t index : indices) {
+        if (index < dataPool.m_count) {
+            // å˜æ¢æ•°æ®
+            const float* transformSrc = transformBase + index * ObjectManager::FLOAT_NUM_PER_TRANSFORM;
+            transformData.insert(transformData.end(), transformSrc, transformSrc + ObjectManager::FLOAT_NUM_PER_TRANSFORM);
+
+            // é¢œè‰²æ•°æ®
+            const float* colorSrc = colorBase + index * ObjectManager::FLOAT_NUM_PER_COLOR;
+            colorData.insert(colorData.end(), colorSrc, colorSrc + ObjectManager::FLOAT_NUM_PER_COLOR);
         }
     }
+
+    updateBuffers(batch, transformData.data(), colorData.data(), instanceCount);
+    batch.needsUpdate = false;
+    batch.hasValidData = true;
+
+    auto uploadEnd = std::chrono::high_resolution_clock::now();
+    m_stats.updateTime += std::chrono::duration<float, std::milli>(uploadEnd - uploadStart).count();
 }
 
-void RenderManager::renderChunkBatch(uint32_t chunkId, const std::vector<Object*>& objects, FrameInfo& frameInfo)
+void RenderManager::renderBatch(const RenderBatch& batch, FrameInfo& frameInfo)
 {
-    if (objects.empty())
+
+    auto renderStart = std::chrono::high_resolution_clock::now();
+
+    if (batch.instanceCount == 0)
         return;
 
-    ModelType type = m_BufferPool.getChunkType(chunkId);
-    if (type == ModelType::None)
-    {
-        return;
-    }
+    auto* renderSystem = getRenderSystemByType(batch.modelType);
 
-    auto* renderSystem = getRenderSystemByType(type);
     if (!renderSystem)
         return;
 
     renderSystem->bind(frameInfo.commandBuffer);
 
-    uint32_t segmentIndex = m_BufferPool.getChunkBufferIndex(chunkId);
-    m_BufferPool.bindBuffersForType(frameInfo.commandBuffer, type, segmentIndex);
+    uint32_t segmentIndex = m_BufferPool.getChunkBufferIndex(batch.chunkId);
+    m_BufferPool.bindBuffersForType(frameInfo.commandBuffer, batch.modelType, segmentIndex);
 
-    RenderBatch& batch = getOrCreateBatch(chunkId);
+    // ç»‘å®šSOAå®ä¾‹æ•°æ®
+    if (batch.transformBuffer && batch.colorBuffer) {
+        VkBuffer instanceBuffers[] = {
+            batch.transformBuffer->getBuffer(),
+            batch.colorBuffer->getBuffer()
+        };
+        VkDeviceSize offsets[] = { 0, 0 };
 
-    updateInstanceBuffer(batch, objects);
-    // 2.7 °ó¶¨ÊµÀı»º³åÇø
-    if (batch.instanceBuffer) {
-        VkBuffer instanceBuffer = batch.instanceBuffer->getBuffer();
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(frameInfo.commandBuffer, 1, 1, &instanceBuffer, offsets);
+        // ç»‘å®šåˆ°é¡¶ç‚¹è¾“å…¥ä½ç½®1å’Œ2
+        vkCmdBindVertexBuffers(frameInfo.commandBuffer, 1, 2, instanceBuffers, offsets);
     }
-
-    // ====================== µÚËÄ²½£º°ó¶¨ÃèÊö·ûºÍÍÆËÍ³£Á¿ ======================
-    // 2.8 °ó¶¨È«¾ÖÃèÊö·û¼¯£¨ÉãÏñ»ú¡¢¹âÕÕµÈ£©
+    // ç»‘å®šæè¿°ç¬¦é›†
     if (frameInfo.globalDescriptorSet != VK_NULL_HANDLE) {
         vkCmdBindDescriptorSets(
             frameInfo.commandBuffer,
@@ -128,139 +250,126 @@ void RenderManager::renderChunkBatch(uint32_t chunkId, const std::vector<Object*
             0, nullptr
         );
     }
-    uint32_t instanceCount = static_cast<uint32_t>(objects.size());
-    m_BufferPool.drawChunk(frameInfo.commandBuffer, chunkId, instanceCount);
 
+
+    m_BufferPool.drawChunk(frameInfo.commandBuffer, batch.chunkId, static_cast<uint32_t>(batch.instanceCount));
+
+    m_stats.drawCalls++;
+
+    auto renderEnd = std::chrono::high_resolution_clock::now();
+    float renderTime = std::chrono::duration<float, std::milli>(renderEnd - renderStart).count();
+    m_stats.renderTime += renderTime;
 }
 
-RenderManager::RenderBatch& RenderManager::getOrCreateBatch(uint32_t chunkId)
+RenderManager::RenderBatch& RenderManager::getOrCreateBatch(uint32_t chunkId, ModelType modelType)
 {
     auto it = m_renderBatches.find(chunkId);
     if (it == m_renderBatches.end()) {
-        // ´´½¨ĞÂµÄäÖÈ¾Åú´Î
         RenderBatch newBatch;
-        newBatch.modelType = m_BufferPool.getChunkType(chunkId);
+        newBatch.chunkId = chunkId;
+        newBatch.modelType = modelType;
         newBatch.needsUpdate = true;
-        newBatch.bufferCapacity = 0;
-        newBatch.instanceCount = 0;
 
         m_renderBatches[chunkId] = std::move(newBatch);
-
-        qDebug() << "Created new render batch for chunk:" << chunkId;
+        qDebug() << "Created new SOA render batch for chunk:" << chunkId;
     }
 
     return m_renderBatches[chunkId];
 }
 
-void RenderManager::updateInstanceBuffer(RenderBatch& batch, const std::vector<Object*>& objects)
+void RenderManager::allocateBuffers(RenderBatch& batch, size_t instanceCount)
 {
-    if (!needInstanceBufferUpdate(batch, objects))
-    {
-        return;
-    }
+    size_t transformSize = instanceCount * ObjectManager::FLOAT_NUM_PER_TRANSFORM * sizeof(float);
+    size_t colorSize = instanceCount * ObjectManager::FLOAT_NUM_PER_COLOR * sizeof(float);
 
-    size_t requiredSize = objects.size() * sizeof(InstanceData);
+    // åˆ†é…å˜æ¢çŸ©é˜µç¼“å†²åŒº
+    if (!batch.transformBuffer || batch.transformCapacity < transformSize) {
+        size_t newCapacity = static_cast<size_t>(instanceCount * 1.3f); // é¢„ç•™30%ç©ºé—´
 
-    if (!batch.instanceBuffer || batch.bufferCapacity < requiredSize)
-    {
-        allocateInstanceBuffer(batch, requiredSize);
-    }
-
-    // 3.4 ¹¹½¨ÊµÀıÊı¾İ
-    std::vector<InstanceData> instanceData;
-    instanceData.reserve(objects.size());
-
-    for (Object* obj : objects) {
-        if (obj) {
-            InstanceData data;
-            data.transform = obj->getTransform().mat4f();
-            data.color = obj->getColor();
-            data.padding = 0.0f;
-            instanceData.push_back(data);
-
-            // Çå³ı¶ÔÏóµÄ¸üĞÂ±ê¼Ç
-            obj->clearUpdateFlags();
+        try {
+            batch.transformBuffer = std::make_unique<VMABuffer>(
+                m_device,
+                sizeof(float) * ObjectManager::FLOAT_NUM_PER_TRANSFORM,
+                newCapacity,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU
+            );
+            batch.transformCapacity = newCapacity * ObjectManager::FLOAT_NUM_PER_TRANSFORM * sizeof(float);
+        }
+        catch (const std::exception& e) {
+            qDebug() << "Failed to allocate transform buffer:" << e.what();
+            return;
         }
     }
 
-    // 3.5 ÉÏ´«ÊµÀıÊı¾İµ½GPU
-    if (!instanceData.empty()) {
-        batch.instanceBuffer->map();
-        batch.instanceBuffer->writeToBuffer(instanceData.data(),
-            instanceData.size() * sizeof(InstanceData));
-        batch.instanceBuffer->unmap();
-    }
+    // åˆ†é…é¢œè‰²ç¼“å†²åŒº
+    if (!batch.colorBuffer || batch.colorCapacity < colorSize) {
+        size_t newCapacity = static_cast<size_t>(instanceCount * 1.3f);
 
-    // 3.6 ¸üĞÂÅú´Î×´Ì¬
-    batch.objects = objects;
-    batch.instanceCount = static_cast<uint32_t>(objects.size());
-    batch.needsUpdate = false;
-
-    qDebug() << "Updated instance buffer with" << objects.size() << "instances";
-}
-
-bool RenderManager::needInstanceBufferUpdate(const RenderBatch& batch, const std::vector<Object*>& objects)
-{
-    // ¼ì²éÅú´ÎÊÇ·ñ±ê¼ÇÎªĞèÒª¸üĞÂ
-    if (batch.needsUpdate) {
-        return true;
-    }
-
-    // ¼ì²é¶ÔÏóÊıÁ¿ÊÇ·ñ±ä»¯
-    if (batch.objects.size() != objects.size()) {
-        return true;
-    }
-
-    // ¼ì²é¶ÔÏóÊÇ·ñÓĞ±ä»¯»ò¸üĞÂ
-    for (size_t i = 0; i < objects.size(); ++i) {
-        if (i >= batch.objects.size() ||
-            batch.objects[i] != objects[i] ||
-            (objects[i] && objects[i]->needsUpdate())) {
-            return true;
+        try {
+            batch.colorBuffer = std::make_unique<VMABuffer>(
+                m_device,
+                sizeof(float) * ObjectManager::FLOAT_NUM_PER_COLOR,
+                newCapacity,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU
+            );
+            batch.colorCapacity = newCapacity * ObjectManager::FLOAT_NUM_PER_COLOR * sizeof(float);
+        }
+        catch (const std::exception& e) {
+            qDebug() << "Failed to allocate color buffer:" << e.what();
+            return;
         }
     }
-
-    return false;
 }
 
-void RenderManager::allocateInstanceBuffer(RenderBatch& batch, size_t requiredSize)
+void RenderManager::updateBuffers(RenderBatch& batch, const float* transformData, const float* colorData, size_t instanceCount)
 {
-    // ·ÖÅä±ÈĞèÒªµÄ´óÒ»Ğ©µÄ»º³åÇø£¬±ÜÃâÆµ·±ÖØĞÂ·ÖÅä
-    size_t newCapacity = qMax(requiredSize * 2, size_t(100 * sizeof(InstanceData)));
-
-    try {
-        batch.instanceBuffer = std::make_unique<VMABuffer>(
-            m_device,
-            sizeof(InstanceData),
-            newCapacity / sizeof(InstanceData),
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU
-        );
-        batch.bufferCapacity = newCapacity;
-
-        qDebug() << "Allocated instance buffer with capacity:" << (newCapacity / sizeof(InstanceData));
+    // ä¸Šä¼ å˜æ¢æ•°æ®
+    if (batch.transformBuffer && transformData) {
+        size_t dataSize = instanceCount * ObjectManager::FLOAT_NUM_PER_TRANSFORM * sizeof(float);
+        batch.transformBuffer->map();
+        batch.transformBuffer->writeToBuffer(const_cast<float*>(transformData), dataSize);
     }
-    catch (const std::exception& e) {
-        qDebug() << "Failed to allocate instance buffer:" << e.what();
-        batch.instanceBuffer.reset();
-        batch.bufferCapacity = 0;
+
+    // ä¸Šä¼ é¢œè‰²æ•°æ®
+    if (batch.colorBuffer && colorData) {
+        size_t dataSize = instanceCount * ObjectManager::FLOAT_NUM_PER_COLOR * sizeof(float);
+        batch.colorBuffer->map();
+        batch.colorBuffer->writeToBuffer(const_cast<float*>(colorData), dataSize);
     }
 }
 
 RenderSystem* RenderManager::getRenderSystemByType(ModelType type)
 {
-    switch (type)
-    {
-    case ModelType::Point:
-    return m_pointRenderSystem.get();
-
-    case ModelType::Line:
-    return m_lineRenderSystem.get();
-
-    case ModelType::Polygon:
-    return m_polygonRenderSystem.get();
-
-    default:
-    return nullptr;
+    switch (type) {
+    case ModelType::Point:   return m_pointRenderSystem.get();
+    case ModelType::Line:    return m_lineRenderSystem.get();
+    case ModelType::Polygon: return m_polygonRenderSystem.get();
+    default: return nullptr;
     }
 }
+
+ModelType RenderManager::getChunkModelType(uint32_t chunkId)
+{
+    return m_BufferPool.getChunkType(chunkId);
+}
+
+void RenderManager::updateRenderStats()
+{
+    m_stats.totalBatches = static_cast<uint32_t>(m_renderBatches.size());
+
+    // è®¡ç®—GPUå†…å­˜ä½¿ç”¨
+    uint64_t totalMemory = 0;
+    for (const auto& [id, batch] : m_renderBatches) {
+        if (batch.transformBuffer) {
+            totalMemory += batch.transformBuffer->getBufferSize();
+        }
+        if (batch.colorBuffer) {
+            totalMemory += batch.colorBuffer->getBufferSize();
+        }
+    }
+    m_stats.gpuMemoryUsed = totalMemory;
+}
+
+

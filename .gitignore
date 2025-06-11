@@ -36,5 +36,6 @@ bin/
 obj/
 src/x64
 
+*.bak
 *vcxproj.user
 .vscode/

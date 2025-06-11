@@ -102,6 +102,58 @@ void Camera::setViewLocation(QVector3D position, QVector3D rotation)
 
 }
 
+AABB Camera::getViewFrustum() const
+{
+    Camera::Frustum2D frustum = getFrustum2D();
+
+    // 视锥体平面：left, right, bottom, top
+    const auto& planes = frustum.planes;
+
+    // 计算视锥体边界的交点来确定可见区域
+    // 平面方程：ax + by + c = 0
+
+    // 找到四个角点的交点
+    std::vector<QVector2D> intersectionPoints;
+
+    // 计算相邻平面的交点
+    for (int i = 0; i < 4; ++i) {
+        int next = (i + 1) % 4;
+        QVector2D intersection = calculatePlaneIntersection(planes[i], planes[next]);
+
+        // 检查交点是否有效（不是无穷远）
+        if (std::isfinite(intersection.x()) && std::isfinite(intersection.y())) {
+            intersectionPoints.push_back(intersection);
+        }
+    }
+
+    // 如果没有找到有效交点，使用一个大的默认区域
+    if (intersectionPoints.empty()) {
+        return AABB{ -10000.0f, -10000.0f, 10000.0f, 10000.0f };
+    }
+
+    // 计算包围所有交点的AABB
+    float minX = intersectionPoints[0].x();
+    float maxX = intersectionPoints[0].x();
+    float minY = intersectionPoints[0].y();
+    float maxY = intersectionPoints[0].y();
+
+    for (const auto& point : intersectionPoints) {
+        minX = std::min(minX, point.x());
+        maxX = std::max(maxX, point.x());
+        minY = std::min(minY, point.y());
+        maxY = std::max(maxY, point.y());
+    }
+
+    // 扩展边界以确保覆盖整个视锥体
+    float padding = 100.0f;  // 可以根据需要调整
+    return AABB{
+        minX - padding,
+        minY - padding,
+        maxX + padding,
+        maxY + padding
+    };
+}
+
 Camera::Frustum2D Camera::getFrustum2D() const
 {
     QMatrix4x4 M = m_projectionMartrix * m_viewMatrix;
@@ -128,4 +180,10 @@ Camera::Frustum2D Camera::getFrustum2D() const
     extractPlane(1, 3, false, f.planes[3]);
 
     return f;
+}
+
+QVector3D Camera::getPosition() const
+{
+    QMatrix4x4 invView = m_viewMatrix.inverted();
+    return QVector3D(invView(0, 3), invView(1, 3), invView(2, 3));
 }

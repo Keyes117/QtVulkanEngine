@@ -183,6 +183,45 @@ void BufferPool::drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint
     }
 }
 
+void BufferPool::drawSegment(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentIndex)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto typeIt = m_bufferPools.find(type);
+    if (typeIt == m_bufferPools.end() || segmentIndex >= typeIt->second.size())
+        return;
+
+    const auto& segment = typeIt->second[segmentIndex];
+
+    if (!segment.isActive || segment.usedVertices == 0)
+        return;
+
+    // ?? 绑定整个Segment的缓冲区（已有的逻辑）
+    VkBuffer vertexBuffers[] = { segment.vertexBuffer->getBuffer() };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    if (segment.indexBuffer && segment.usedIndices > 0) {
+        vkCmdBindIndexBuffer(commandBuffer, segment.indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        //  一次性渲染整个Segment的所有索引
+        vkCmdDrawIndexed(commandBuffer,
+            segment.usedIndices,    // 整个Segment的索引数量
+            1,                      // 实例数
+            0,                      // 起始索引偏移
+            0,                      // 顶点偏移
+            0);                     // 第一个实例
+    }
+    else if (segment.usedVertices > 0) {
+        //  没有索引的情况，直接渲染顶点
+        vkCmdDraw(commandBuffer,
+            segment.usedVertices,   // 整个Segment的顶点数量
+            1,                      // 实例数
+            0,                      // 第一个顶点
+            0);                     // 第一个实例
+    }
+}
+
 const BufferPool::Chunk* BufferPool::getChunk(uint32_t chunkId) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -304,7 +343,12 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
     vertexStagingBuffer.map();
     vertexStagingBuffer.writeToBuffer(const_cast<void*>(static_cast<const void*>(vertices.data())));
 
-    m_device.copyBuffer(vertexStagingBuffer.getBuffer(), segment->vertexBuffer->getBuffer(), vertexDataSize);
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = vertexOffset * sizeof(Model::Vertex);  // 使用正确的偏移量
+    copyRegion.size = vertexDataSize;
+
+    m_device.copyBufferWithInfo(vertexStagingBuffer.getBuffer(), segment->vertexBuffer->getBuffer(), copyRegion);
 
     if (!indices.empty())
     {
@@ -321,7 +365,12 @@ void BufferPool::copyDataToSegment(BufferSegment* segment,
         indexStagingBuffer.map();
         indexStagingBuffer.writeToBuffer(const_cast<void*>(static_cast<const void*>(indices.data())));
 
-        m_device.copyBuffer(indexStagingBuffer.getBuffer(), segment->indexBuffer->getBuffer(), indexDataSize);
+        VkBufferCopy indexCopyRegion{};
+        indexCopyRegion.srcOffset = 0;
+        indexCopyRegion.dstOffset = indexOffset * sizeof(uint32_t);  // 使用正确的偏移量
+        indexCopyRegion.size = indexDataSize;
+
+        m_device.copyBufferWithInfo(indexStagingBuffer.getBuffer(), segment->indexBuffer->getBuffer(), indexCopyRegion);
     }
 
 

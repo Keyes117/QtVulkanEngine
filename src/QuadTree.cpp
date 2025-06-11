@@ -5,19 +5,19 @@ QuadTree::QuadTree(const AABB& bounds) :
 {
 }
 
-void QuadTree::insert(Object* object)
+void QuadTree::insert(const std::shared_ptr<Object>& object)
 {
     if (object && object->getModel())
         insertObject(m_root.get(), object);
 }
 
-void QuadTree::remove(Object* object)
+void QuadTree::remove(const std::shared_ptr<Object>& object)
 {
     if (object)
         removeObject(m_root.get(), object);
 }
 
-void QuadTree::update(Object* object)
+void QuadTree::update(const std::shared_ptr<Object>& object)
 {
     if (object)
     {
@@ -26,9 +26,9 @@ void QuadTree::update(Object* object)
     }
 }
 
-std::vector<Object*> QuadTree::query(const AABB& bounds)
+std::vector<std::shared_ptr<Object>> QuadTree::query(const AABB& bounds)
 {
-    std::vector<Object*> result;
+    std::vector<std::shared_ptr<Object>> result;
     queryNode(m_root.get(), bounds, result);
     return result;
 }
@@ -38,7 +38,7 @@ void QuadTree::clear()
     m_root = std::make_unique<Node>(m_root->bounds, 0);
 }
 
-void QuadTree::insertObject(Node* node, Object* object)
+void QuadTree::insertObject(Node* node, const std::shared_ptr<Object>& object)
 {
     if (!node->bounds.overlaps(object->getBoundingBox()))
         return;
@@ -58,7 +58,7 @@ void QuadTree::insertObject(Node* node, Object* object)
     }
 }
 
-void QuadTree::removeObject(Node* node, Object* object)
+void QuadTree::removeObject(Node* node, const std::shared_ptr<Object>& object)
 {
     if (!node)
         return;
@@ -78,12 +78,12 @@ void QuadTree::removeObject(Node* node, Object* object)
     }
 }
 
-void QuadTree::queryNode(Node* node, const AABB& queryBounds, std::vector<Object*>& result)
+void QuadTree::queryNode(Node* node, const AABB& queryBounds, std::vector<std::shared_ptr<Object>>& result)
 {
     if (!node || !node->bounds.overlaps(queryBounds))
         return;
 
-    for (auto* object : node->objects)
+    for (auto object : node->objects)
     {
         if (object->getBoundingBox().overlaps(queryBounds))
             result.push_back(object);
