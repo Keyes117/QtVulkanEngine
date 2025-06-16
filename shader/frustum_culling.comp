@@ -1,0 +1,208 @@
+#version 450
+
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+
+struct SegmentAddressInfo 
+{
+    uint64_t drawCommandAddress;
+    uint64_t drawCountAddress;
+    uint maxDrawCommands;
+    uint segmentIndex;
+    uint modelType;
+    uint padding[3];
+};
+
+struct ObjectData
+{
+    mat4 transform;
+    vec4 boundingBox;       // minx, miny, maxx, maxy
+    uint chunkId;
+    uint modelType;
+    uint indexOffset;
+    uint indexCount;
+    uint vertexOffset;
+    uint segmentIndex;
+    uint visible;
+    uint padding[1];
+};
+
+struct VkDrawIndexedIndirectCommand
+{
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};
+
+struct CameraData
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec4 frustumPlanes[6];
+    vec3 cameraPos;
+    float nearPlane;
+    float farPlane;
+    uint padding[3];
+};
+
+layout(set = 0, binding = 0) restrict buffer ObjectBuffer
+{
+    ObjectData objects[];
+} objectBuffer;
+
+layout(set = 0, binding = 1) restrict readonly buffer CameraBuffer
+{
+    CameraData camera;
+} cameraBuffer;
+
+layout(set = 0, binding = 2) restrict readonly buffer SegmentAddressBuffer
+{
+    SegmentAddressInfo segmentAddresses[];
+} segmentAddressBuffer;
+
+layout(set = 0, binding = 3) restrict buffer DebugBuffer
+{
+    uint totalProcessed;
+    uint visibleCount;
+    uint segmentDrawCounts[8];
+    uint drawIndex;
+    uint padding[1];
+} debugBuffer;
+
+layout(buffer_reference, std430) buffer DrawCommandBufferRef
+{
+    VkDrawIndexedIndirectCommand commands[];
+};
+
+layout(buffer_reference, std430) buffer DrawCountBufferRef
+{
+    uint count;
+};
+
+layout(push_constant) uniform PushConstants
+{
+    uint totalObjects;
+    uint segmentCount;
+} push;
+
+
+bool aabbInFrustum(vec4 boundingBox)
+{
+    vec2 minXY = boundingBox.xy;  // minX, minY
+    vec2 maxXY = boundingBox.zw;  // maxX, maxY
+    
+    // 对于2D渲染，只检查左、右、上、下四个视锥面
+    for (int i = 0; i < 4; i++) {
+        vec4 plane = cameraBuffer.camera.frustumPlanes[i];
+        
+        // 计算AABB在该平面方向上的最远点（只考虑XY）
+        vec2 farPoint = mix(minXY, maxXY, greaterThan(plane.xy, vec2(0.0)));
+        
+        // 计算距离（使用固定的Z值进行2D测试）
+        float distance = dot(plane.xy, farPoint) + plane.w;
+        
+        // 如果最远点都在平面外侧，则完全被剔除
+        if (distance < 0.0) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+    
+    // 边界检查
+    if (index >= push.totalObjects) {
+        return;
+    }
+    
+    if(index == 0)
+    {
+        debugBuffer.totalProcessed =0;
+        debugBuffer.visibleCount = 0;
+        for(int i=0; i <8 ; i++)
+        {   
+            debugBuffer.segmentDrawCounts[i] = 0;
+        }
+    }
+
+    // 获取对象数据
+    ObjectData obj = objectBuffer.objects[index];
+    
+    // 只处理有效的对象（indexCount > 0）
+    if (obj.indexCount == 0) {
+        objectBuffer.objects[index].visible = 0u;
+        return;
+    }
+    
+    // 执行视锥剔除
+    bool visible = aabbInFrustum(obj.boundingBox);
+    objectBuffer.objects[index].visible = visible ? 1u : 0u;
+
+    atomicAdd(debugBuffer.totalProcessed, 1);
+
+     debugBuffer.drawIndex = 5;
+    if (visible)
+    {
+        uint targetSegmentIndex = obj.segmentIndex;
+        uint targetModelType = obj.modelType;
+
+        atomicAdd(debugBuffer.visibleCount, 1);
+         debugBuffer.drawIndex = 4;
+
+        //  遍历所有Segment地址信息
+        for (uint i = 0; i < push.segmentCount; i++)
+        {
+            debugBuffer.drawIndex = 3;
+            SegmentAddressInfo segmentInfo = segmentAddressBuffer.segmentAddresses[i];
+
+            if (segmentInfo.segmentIndex == targetSegmentIndex && 
+                segmentInfo.modelType == targetModelType)
+            {
+                //  通过BDA访问对应的缓冲区
+                DrawCountBufferRef countBuffer = DrawCountBufferRef(segmentInfo.drawCountAddress);
+                DrawCommandBufferRef commandBuffer = DrawCommandBufferRef(segmentInfo.drawCommandAddress);                
+
+                if(segmentInfo.drawCountAddress == 0 || segmentInfo.drawCommandAddress == 0)
+                {
+                    debugBuffer.drawIndex = 2;
+                }
+                  debugBuffer.drawIndex = 1;
+
+                atomicAdd(debugBuffer.segmentDrawCounts[targetSegmentIndex],1);
+                
+                // 原子增加绘制计数
+                uint drawIndex = atomicAdd(countBuffer.count, 1);
+
+                debugBuffer.drawIndex = countBuffer.count;
+
+                if (drawIndex < segmentInfo.maxDrawCommands)
+                {
+                    // 写入绘制命令
+                    VkDrawIndexedIndirectCommand cmd;
+                    cmd.indexCount = obj.indexCount;
+                    cmd.instanceCount = 1;
+                    cmd.firstIndex = obj.indexOffset;
+                    cmd.vertexOffset = int(obj.vertexOffset);
+                    cmd.firstInstance = 0;
+                    
+                    commandBuffer.commands[drawIndex] = cmd;
+                   
+                }
+
+                break;
+            }
+        }
+
+      
+    }
+}

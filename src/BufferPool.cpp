@@ -20,7 +20,6 @@ uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
         return INVALID_CHUNK_ID;
     }
 
-
     auto* segment = getOrCreateSegment(type);
     if (!segment)
     {
@@ -35,14 +34,15 @@ uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
         qDebug() << "Buffer Segment full, creating new segment for type: "
             << static_cast<int>(type);
 
-        m_bufferPools[type].emplace_back();
-        auto& newSegment = m_bufferPools[type].back();
+        m_bufferSegments[type].emplace_back();
+        auto& newSegment = m_bufferSegments[type].back();
 
         newSegment.vertexCapacity = VERTICES_PER_SEGMENGT;
         newSegment.indexCapacity = INDICES_PER_SEGMENT;
         newSegment.usedVertices = 0;
         newSegment.usedIndices = 0;
         newSegment.isActive = true;
+        newSegment.isCommandsNeedUpdate = true;
 
         try
         {
@@ -62,11 +62,14 @@ uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 VMA_MEMORY_USAGE_GPU_ONLY
             );
+
+            createDrawCommandBuffers(newSegment);
+            notifySegmentUpdate();
         }
         catch (const std::exception& e)
         {
             qWarning() << "failed to create buffers: " << e.what();
-            m_bufferPools[type].pop_back();
+            m_bufferSegments[type].pop_back();
             return INVALID_CHUNK_ID;
         }
 
@@ -82,6 +85,7 @@ uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
     chunk.indexCount = indices.size();
     chunk.isLoaded = true;
     chunk.bounds = builder.bounds;
+    chunk.segmentIndex = m_bufferSegments[type].size() - 1;
 
     copyDataToSegment(segment, vertices, indices, chunk.vertexOffset, chunk.indexOffset);
 
@@ -91,9 +95,10 @@ uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
     uint32_t chunkId = m_nextChunkId++;
     m_chunks[chunkId] = chunk;
     m_chunkTypes[chunkId] = type;
-    m_chunkToSegmentIndex[chunkId] = m_bufferPools[type].size() - 1;
+    m_chunkToSegmentIndex[chunkId] = m_bufferSegments[type].size() - 1;
 
     segment->chunks.push_back(chunkId);
+    segment->isCommandsNeedUpdate = true;
 
     qDebug() << "allocated geometry chunk" << chunkId
         << " with " << vertices.size() << " vertices ";
@@ -107,8 +112,8 @@ std::vector<uint32_t> BufferPool::getVisibleChunks(const Camera& camera, ModelTy
 
     std::vector<uint32_t> visibleChunks;
 
-    auto typeIt = m_bufferPools.find(type);
-    if (typeIt != m_bufferPools.end())
+    auto typeIt = m_bufferSegments.find(type);
+    if (typeIt != m_bufferSegments.end())
     {
         for (const auto& segment : typeIt->second)
         {
@@ -131,10 +136,10 @@ std::vector<uint32_t> BufferPool::getVisibleChunks(const Camera& camera, ModelTy
 
 void BufferPool::bindBuffersForType(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentId)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    //std::lock_guard<std::mutex> lock(m_mutex);
 
-    auto typeIt = m_bufferPools.find(type);
-    if (typeIt == m_bufferPools.end() || segmentId >= typeIt->second.size())
+    auto typeIt = m_bufferSegments.find(type);
+    if (typeIt == m_bufferSegments.end() || segmentId >= typeIt->second.size())
         return;
 
 
@@ -153,72 +158,39 @@ void BufferPool::bindBuffersForType(VkCommandBuffer commandBuffer, ModelType typ
     }
 }
 
-void BufferPool::drawChunk(VkCommandBuffer commandBuffer, uint32_t chunkId, uint32_t instanceCount)
-{
-    auto it = m_chunks.find(chunkId);
-    if (it == m_chunks.end())
-        return;
-
-    const auto& chunk = it->second;
-
-    if (!chunk.isLoaded)
-        return;
-
-    if (chunk.indexCount > 0)
-    {
-        vkCmdDrawIndexed(commandBuffer,
-            chunk.indexCount,
-            instanceCount,
-            chunk.indexOffset,
-            chunk.vertexOffset,
-            0);
-    }
-    else
-    {
-        vkCmdDraw(commandBuffer,
-            chunk.vertexCount,
-            instanceCount,
-            chunk.vertexOffset,
-            0);
-    }
-}
-
-void BufferPool::drawSegment(VkCommandBuffer commandBuffer, ModelType type, uint32_t segmentIndex)
+void BufferPool::drawGPUDriven(VkCommandBuffer commandBuffer, ModelType type)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    auto typeIt = m_bufferPools.find(type);
-    if (typeIt == m_bufferPools.end() || segmentIndex >= typeIt->second.size())
+    auto typeIt = m_bufferSegments.find(type);
+    if (typeIt == m_bufferSegments.end() || typeIt->second.empty()) {
         return;
-
-    const auto& segment = typeIt->second[segmentIndex];
-
-    if (!segment.isActive || segment.usedVertices == 0)
-        return;
-
-    // ?? 绑定整个Segment的缓冲区（已有的逻辑）
-    VkBuffer vertexBuffers[] = { segment.vertexBuffer->getBuffer() };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    if (segment.indexBuffer && segment.usedIndices > 0) {
-        vkCmdBindIndexBuffer(commandBuffer, segment.indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-        //  一次性渲染整个Segment的所有索引
-        vkCmdDrawIndexed(commandBuffer,
-            segment.usedIndices,    // 整个Segment的索引数量
-            1,                      // 实例数
-            0,                      // 起始索引偏移
-            0,                      // 顶点偏移
-            0);                     // 第一个实例
     }
-    else if (segment.usedVertices > 0) {
-        //  没有索引的情况，直接渲染顶点
-        vkCmdDraw(commandBuffer,
-            segment.usedVertices,   // 整个Segment的顶点数量
-            1,                      // 实例数
-            0,                      // 第一个顶点
-            0);                     // 第一个实例
+
+    uint32_t drawCallOffset = 0;
+    // 遍历该类型的所有segments
+    for (uint32_t segmentIndex = 0; segmentIndex < typeIt->second.size(); ++segmentIndex)
+    {
+        const auto& segment = typeIt->second[segmentIndex];
+
+        if (!segment.isActive || segment.chunks.empty()) {
+            continue;
+        }
+
+        // 绑定几何缓冲区
+        bindBuffersForType(commandBuffer, type, segmentIndex);
+        uint32_t count = segment.chunks.size();
+        // GPU驱动的间接绘制
+        vkCmdDrawIndexedIndirectCount(
+            commandBuffer,
+            segment.drawCommandBuffer->getBuffer(),
+            0,
+            segment.drawCountBuffer->getBuffer(),
+            0,
+            segment.chunks.size(),
+            sizeof(VkDrawIndexedIndirectCommand)
+        );
+        qDebug() << "[GPU-Driven] Segment" << segmentIndex;
     }
 }
 
@@ -255,7 +227,7 @@ void BufferPool::printPoolStatus() const
     size_t totalSegments = 0;
     size_t totalChunks = 0;
 
-    for (const auto& [type, segments] : m_bufferPools) {
+    for (const auto& [type, segments] : m_bufferSegments) {
         qDebug() << "Type " << static_cast<int>(type) << ": " << segments.size() << " segments";
 
         for (const auto& segment : segments) {
@@ -278,9 +250,71 @@ void BufferPool::printPoolStatus() const
     qDebug() << "VMABuffer objects created: " << totalSegments * 2;
 }
 
+void BufferPool::ensureDrawCommandCapacity(BufferSegment& segment, size_t requiredCount)
+{
+    if (requiredCount <= segment.drawCommandCapacity)
+        return;
+
+    // 扩展容量（增加50%）
+    size_t newCapacity = static_cast<size_t>(requiredCount * 1.5f);
+
+    try {
+        auto newDrawCommandBuffer = std::make_unique<VMABuffer>(
+            m_device,
+            sizeof(VkDrawIndexedIndirectCommand),
+            newCapacity,
+            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU
+        );
+
+        segment.drawCommandBuffer = std::move(newDrawCommandBuffer);
+        segment.drawCommandCapacity = newCapacity;
+        updateBufferAddresses(segment);
+        qDebug() << "Expanded draw command buffer capacity to" << newCapacity;
+    }
+    catch (const std::exception& e) {
+        qWarning() << "Failed to expand draw command buffer:" << e.what();
+    }
+}
+
+void BufferPool::groupChunksBySegment(const std::vector<uint32_t>& chunks, std::unordered_map<uint32_t, std::vector<uint32_t>>& groupedChunks) const
+{
+    groupedChunks.clear();
+
+    for (uint32_t chunkId : chunks) {
+        auto it = m_chunkToSegmentIndex.find(chunkId);
+        if (it != m_chunkToSegmentIndex.end()) {
+            groupedChunks[it->second].push_back(chunkId);
+        }
+    }
+}
+
+void BufferPool::createDrawCommandBuffers(BufferSegment& segment)
+{
+    segment.drawCommandBuffer = std::make_unique<VMABuffer>(
+        m_device,
+        sizeof(VkDrawIndexedIndirectCommand),
+        INITIAL_DRAW_COMMANDS,
+        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+    );
+
+    segment.drawCountBuffer = std::make_unique<VMABuffer>(
+        m_device,
+        sizeof(uint32_t),
+        1,
+        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+    );
+
+    updateBufferAddresses(segment);
+
+    qDebug() << "[BufferPool] Created draw command buffers for segment, max commands:" << INITIAL_DRAW_COMMANDS;
+}
+
 BufferPool::BufferSegment* BufferPool::getOrCreateSegment(ModelType type)
 {
-    auto& segments = m_bufferPools[type];
+    auto& segments = m_bufferSegments[type];
 
     //如果当前缓存池中没有已经分配的缓冲端，则分配一个
     if (segments.empty())
@@ -310,15 +344,46 @@ BufferPool::BufferSegment* BufferPool::getOrCreateSegment(ModelType type)
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY
         );
+
+        createDrawCommandBuffers(segment);
     }
 
     return &segments.back();
+}
+
+void BufferPool::updateBufferAddresses(BufferSegment& segment)
+{
+    VkBufferDeviceAddressInfo addressInfo{};
+    addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    addressInfo.pNext = nullptr;
+
+    if (segment.drawCommandBuffer) {
+        addressInfo.buffer = segment.drawCommandBuffer->getBuffer();
+        segment.drawCommandBufferAddress = vkGetBufferDeviceAddress(m_device.device(), &addressInfo);
+    }
+
+    if (segment.drawCountBuffer) {
+        addressInfo.buffer = segment.drawCountBuffer->getBuffer();
+        segment.drawCountBufferAddress = vkGetBufferDeviceAddress(m_device.device(), &addressInfo);
+    }
+
+    notifySegmentUpdate();
+    qDebug() << "[BufferPool] Updated buffer addresses:"
+        << "DrawCommand=" << segment.drawCommandBufferAddress
+        << "DrawCount=" << segment.drawCountBufferAddress;
 }
 
 bool BufferPool::frustumCull(const AABB& bounds, const Camera& camera)
 {
     auto frustum = camera.getFrustum2D();
     return !frustum.insersects(bounds);
+}
+
+void BufferPool::notifySegmentUpdate()
+{
+    if (m_segmentUpdateCallback) {
+        m_segmentUpdateCallback();
+    }
 }
 
 void BufferPool::copyDataToSegment(BufferSegment* segment,

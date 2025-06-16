@@ -52,8 +52,8 @@ public:
     VmaAllocator allocator() const { return m_allocator; }
 
     // 添加获取图形队列族索引的方法
-    uint32_t getGraphicsQueueFamily() { 
-        return findPhysicalQueueFamilies().graphicsFamily; 
+    uint32_t getGraphicsQueueFamily() {
+        return findPhysicalQueueFamilies().graphicsFamily;
     }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(m_physicalDevice); }
@@ -132,5 +132,6 @@ private:
     VkQueue m_presentQueue;
 
     const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
-    const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+    const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                                                        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME };
 };

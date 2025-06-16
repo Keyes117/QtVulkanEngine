@@ -8,8 +8,8 @@
 #include "Movement_Controller.h"
 #include "Object.h"
 #include "const.h"
-//#define EXPEND_100
-#define LIMIT
+#define EXPEND_100
+//#define LIMIT
 
 
 #ifdef max
@@ -162,7 +162,9 @@ void MyVulkanApp::run()
                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                     m_timestampQueryPool, 0);
                 //render
-               // 同时开启管线统计
+                m_sceneManager->culling(frameInfo);
+
+                // 同时开启管线统计
                 vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
                 renderer.beginSwapChainRenderPass(commandBuffer);
 

@@ -79,7 +79,8 @@
     </Link>
     <PreBuildEvent>
       <Command>glslc $(SolutionDir)shader\simple_shader.vert  -o  $(SolutionDir)bin\Debug\simple_shader.vert.spv
-glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simple_shader.frag.spv</Command>
+glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simple_shader.frag.spv
+glslc $(SolutionDir)shader\frustum_culling.comp  -o  $(SolutionDir)bin\Debug\frustum_culling.comp.spv</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -129,6 +130,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Descriptors.cpp" />
     <ClCompile Include="FrameInfo.cpp" />
+    <ClCompile Include="GpuFrustumCuller.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Movement_Controller.cpp" />
     <ClCompile Include="MyVulkanApp.cpp" />
@@ -158,6 +160,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <ClInclude Include="Descriptors.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="FrameInfo.h" />
+    <ClInclude Include="GpuFrustumCuller.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Movement_Controller.h" />
     <ClInclude Include="MyVulkanApp.h" />
@@ -175,6 +178,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <QtMoc Include="MyVulkanWindow.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\shader\frustum_culling.comp" />
     <None Include="..\shader\simple_shader.frag" />
     <None Include="..\shader\simple_shader.vert" />
   </ItemGroup>

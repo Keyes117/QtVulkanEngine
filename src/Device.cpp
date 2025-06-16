@@ -80,10 +80,10 @@ void Device::createInstance() {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "LittleVulkanEngine App";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 2, 0);
     appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 2, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_2;
 
 
     VkInstanceCreateInfo createInfo = {};
@@ -158,10 +158,18 @@ void Device::createLogicalDevice() {
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
+    deviceFeatures.multiDrawIndirect = VK_TRUE;  // 启用多重间接绘制
+    deviceFeatures.drawIndirectFirstInstance = VK_TRUE;  // 可选，但推荐
+
+    // 启用 Buffer Device Address 功能
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
+    bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+    bufferDeviceAddressFeatures.pNext = nullptr;
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
+    createInfo.pNext = &bufferDeviceAddressFeatures;  // 链接功能结构体
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
@@ -204,6 +212,7 @@ void Device::createCommandPool() {
 void Device::initVulkanMemAllocator()
 {
     VmaAllocatorCreateInfo allocInfo = {};
+    allocInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     allocInfo.physicalDevice = m_physicalDevice;
     allocInfo.device = m_VkDevice;
     allocInfo.instance = m_instance;
@@ -234,8 +243,19 @@ bool Device::isDeviceSuitable(VkPhysicalDevice device) {
     VkPhysicalDeviceFeatures supportedFeatures;
     vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
+    // 检查 Buffer Device Address 支持
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures{};
+    bufferAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+
+    VkPhysicalDeviceFeatures2 features2{};
+    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features2.pNext = &bufferAddressFeatures;
+
+    vkGetPhysicalDeviceFeatures2(device, &features2);
+
     return indices.isComplete() && extensionsSupported && swapChainAdequate &&
-        supportedFeatures.samplerAnisotropy;
+        supportedFeatures.samplerAnisotropy && bufferAddressFeatures.bufferDeviceAddress;
+
 }
 
 void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {

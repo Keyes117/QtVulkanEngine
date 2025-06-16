@@ -98,6 +98,9 @@
     <ClCompile Include="SceneManager.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="GpuFrustumCuller.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h">
@@ -160,6 +163,9 @@
     <ClInclude Include="SceneManager.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="GpuFrustumCuller.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MyVulkanWindow.h">
@@ -174,6 +180,9 @@
       <Filter>shader</Filter>
     </None>
     <None Include="..\shader\simple_shader.vert">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="..\shader\frustum_culling.comp">
       <Filter>shader</Filter>
     </None>
   </ItemGroup>
