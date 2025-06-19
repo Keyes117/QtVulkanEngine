@@ -61,6 +61,8 @@ private:
     void createSegmentedContour(OGRLineString* ls, int nPts);
     void createSingleContour(OGRLineString* ls, int nPts);
 
+    void readbackPerformanceResults();
+
 private:
 
     float                                                   m_minX = std::numeric_limits<float>::infinity();

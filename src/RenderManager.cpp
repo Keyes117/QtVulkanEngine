@@ -62,7 +62,7 @@ void RenderManager::renderGPUDriven(const ObjectManager::ObjectDataPool& dataPoo
     // 执行GPU驱动绘制
     executeGPUDrivenDraw(frameInfo);
 
-    vkDeviceWaitIdle(m_device.device());
+    //vkDeviceWaitIdle(m_device.device());
     m_gpuCuller->readDebugData();
 
     auto renderEnd = std::chrono::high_resolution_clock::now();

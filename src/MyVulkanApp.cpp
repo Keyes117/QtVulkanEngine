@@ -9,7 +9,7 @@
 #include "Object.h"
 #include "const.h"
 #define EXPEND_100
-//#define LIMIT
+#define LIMIT
 
 
 #ifdef max
@@ -113,7 +113,7 @@ void MyVulkanApp::run()
             Renderer& renderer = m_sceneManager->getRenderManager().getRenderer();
 
             float aspect = renderer.getAspectRatio();;
-            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.001f, 200.f);
+            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 10000.f);
 
             //TODO:检查这里的帧时间的问题，好像MAX_FRAME_TIME 会失效？
             auto newTime = std::chrono::high_resolution_clock::now();
@@ -140,6 +140,11 @@ void MyVulkanApp::run()
                 vkCmdResetQueryPool(commandBuffer, m_timestampQueryPool, 0, TIMESTAMP_QUERIES);
                 vkCmdResetQueryPool(commandBuffer, m_statsQueryPool, 0, STATS_QUERIES);
 
+                if (m_device.hasPerformanceQuerySupport())
+                {
+                    vkCmdResetQueryPool(commandBuffer, m_device.performanceQueryPool(), 0, 1);
+                    vkCmdBeginQuery(commandBuffer, m_device.performanceQueryPool(), 0, 0);
+                }
 
                 int frameIndex = renderer.getFrameIndex();
                 FrameInfo frameInfo{
@@ -175,6 +180,11 @@ void MyVulkanApp::run()
 
                 renderer.endSwapChainRenderPass(commandBuffer);
                 vkCmdEndQuery(commandBuffer, m_statsQueryPool, 0);
+
+                if (m_device.hasPerformanceQuerySupport()) {
+                    vkCmdEndQuery(commandBuffer, m_device.performanceQueryPool(), 0);
+                }
+
                 vkCmdWriteTimestamp(commandBuffer,
                     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                     m_timestampQueryPool, 1);
@@ -182,6 +192,7 @@ void MyVulkanApp::run()
                 renderer.endFrame();
 
                 readbackQueryResults();
+                readbackPerformanceResults();  // ★ 新增
             }
             m_window.requestUpdate();
         });
@@ -249,7 +260,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
 
     if (!ds)
     {
-        std::runtime_error("failed to open shapefile");
+        throw std::runtime_error("failed to open shapefile");
     }
     int count = 0;
     auto layer = ds->GetLayer(0);
@@ -263,7 +274,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
         count++;
         OGRFeature::DestroyFeature(feature);
 #ifdef LIMIT
-        if (count == 100000)
+        if (count == 300000)
             break;
 #endif
     }
@@ -560,5 +571,56 @@ void MyVulkanApp::createSingleContour(OGRLineString* ls, int nPts)
     builder.transform.translation = QVector3D(0.f, 0.f, 2.5f);
     builder.bounds = boundingBox;
     m_sceneManager->addObject(builder);
+}
+
+void MyVulkanApp::readbackPerformanceResults()
+{
+    if (!m_device.hasPerformanceQuerySupport()) {
+        return;
+    }
+    // 准备接收数据的缓冲区（最多支持6个计数器）
+    std::array<VkPerformanceCounterResultKHR, 6> results{};
+
+    VkResult result = vkGetQueryPoolResults(
+        m_device.device(),
+        m_device.performanceQueryPool(),
+        0, 1,
+        sizeof(results), results.data(),
+        sizeof(VkPerformanceCounterResultKHR),
+        VK_QUERY_RESULT_WAIT_BIT
+    );
+
+    if (result == VK_SUCCESS) {
+        static int frameCount = 0;
+        if (++frameCount % 120 == 0) {  // 每120帧输出一次，避免刷屏
+            qDebug() << "=== [Performance Counters] ===";
+            for (size_t i = 0; i < results.size() && i < 6; ++i) {
+                // 输出不同类型的计数器值
+                if (results[i].uint64 != 0) {
+                    qDebug() << QString("  Counter %1: %2 (uint64)")
+                        .arg(i).arg(results[i].uint64);
+                }
+                else if (results[i].int64 != 0) {
+                    qDebug() << QString("  Counter %1: %2 (int64)")
+                        .arg(i).arg(results[i].int64);
+                }
+                else if (results[i].float64 != 0.0) {
+                    qDebug() << QString("  Counter %1: %2 (float64)")
+                        .arg(i).arg(results[i].float64, 0, 'f', 2);
+                }
+                else if (results[i].float32 != 0.0f) {
+                    qDebug() << QString("  Counter %1: %2 (float32)")
+                        .arg(i).arg(results[i].float32, 0, 'f', 2);
+                }
+            }
+            qDebug() << "==============================";
+        }
+    }
+    else {
+        static int errorCount = 0;
+        if (++errorCount < 5) {  // 只显示前5次错误
+            qWarning() << "[Performance Query] Failed to get results, VkResult:" << result;
+        }
+    }
 }
 

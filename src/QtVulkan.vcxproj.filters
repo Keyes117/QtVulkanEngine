@@ -83,9 +83,6 @@
     <ClCompile Include="VMABuffer.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="QuadTree.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="ObjectManager.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -146,9 +143,6 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="VMABuffer.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="QuadTree.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="ObjectManager.h">

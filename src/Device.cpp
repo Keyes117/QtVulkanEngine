@@ -56,9 +56,20 @@ Device::Device(MyVulkanWindow& window) : m_window{ window } {
     createLogicalDevice();
     createCommandPool();
     initVulkanMemAllocator();
+    setupPerformanceQuery();
 }
 
-Device::~Device() {
+Device::~Device()
+{
+
+    if (m_perfQueryPool != VK_NULL_HANDLE) {
+        vkDestroyQueryPool(m_VkDevice, m_perfQueryPool, nullptr);
+    }
+
+    if (fpRelease && m_hasPerformanceQuerySupport) {
+        fpRelease(m_VkDevice);
+    }
+
     vmaDestroyAllocator(m_allocator);
     vkDestroyCommandPool(m_VkDevice, m_commandPool, nullptr);
     vkDestroyDevice(m_VkDevice, nullptr);
@@ -161,11 +172,40 @@ void Device::createLogicalDevice() {
     deviceFeatures.multiDrawIndirect = VK_TRUE;  // 启用多重间接绘制
     deviceFeatures.drawIndirectFirstInstance = VK_TRUE;  // 可选，但推荐
 
+    //性能查询功能链
+    std::vector<const char*> enabledExtensions = deviceExtensions;
+    bool perfQuerySupported = false;
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+
+    for (const auto& ext : availableExtensions) {
+        if (strcmp(ext.extensionName, VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME) == 0) {
+            enabledExtensions.push_back(VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME);
+            perfQuerySupported = true;
+            break;
+        }
+    }
+
+    m_hasPerformanceQuerySupport = perfQuerySupported;
+
+    // 只有支持时才链接性能查询功能
+    VkPhysicalDevicePerformanceQueryFeaturesKHR perfQueryFeatures{};
+    if (perfQuerySupported) {
+        perfQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR;
+        perfQueryFeatures.performanceCounterQueryPools = VK_TRUE;
+        perfQueryFeatures.performanceCounterMultipleQueryPools = VK_TRUE;
+        perfQueryFeatures.pNext = nullptr;
+    }
+
     // 启用 Buffer Device Address 功能
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
     bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
     bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
-    bufferDeviceAddressFeatures.pNext = nullptr;
+    bufferDeviceAddressFeatures.pNext = perfQuerySupported ? &perfQueryFeatures : nullptr;
+
+
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -313,6 +353,9 @@ std::vector<const char*> Device::getRequiredExtensions() {
     //Windows ƽ̨�õ� Win32 Surface
     extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
+    //性能查询扩展
+    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
     if (enableValidationLayers)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -441,6 +484,120 @@ void Device::checkInstanceExtensionSupport(const std::vector<const char*>& requi
             throw std::runtime_error(std::string("Missing required Vulkan instance extension: ") + req);
         }
     }
+}
+
+void Device::setupPerformanceQuery()
+{
+    if (!checkPerformanceQuerySupport())
+    {
+        qWarning() << "[Performance Query] Extension not supported by device";
+        return;
+    }
+
+    fpEnumerate = reinterpret_cast<PFN_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR>(
+        vkGetInstanceProcAddr(m_instance, "vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR")
+        );
+
+    fpAcquire = reinterpret_cast<PFN_vkAcquireProfilingLockKHR>(
+        vkGetInstanceProcAddr(m_instance, "vkAcquireProfilingLockKHR")
+        );
+
+    fpRelease = reinterpret_cast<PFN_vkReleaseProfilingLockKHR>(
+        vkGetInstanceProcAddr(m_instance, "vkReleaseProfilingLockKHR")
+        );
+
+    if (!fpEnumerate || !fpAcquire || !fpRelease)
+    {
+        qWarning() << "[Performance Qeury] Failed to load function pointers";
+        return;
+    }
+
+    uint32_t queueFamily = getGraphicsQueueFamily();
+    uint32_t counterCount = 0;
+    VkResult result = fpEnumerate(m_physicalDevice, queueFamily, &counterCount, nullptr, nullptr);
+
+    if (result != VK_SUCCESS || counterCount == 0)
+    {
+        qWarning() << "[Performance Qeury] No performance counters available";
+        return;
+    }
+
+    std::vector<VkPerformanceCounterKHR> counters(counterCount);
+    std::vector<VkPerformanceCounterDescriptionKHR> descriptions(counterCount);
+
+    for (auto& counter : counters)
+    {
+        counter.sType = VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR;
+        counter.pNext = nullptr;
+    }
+
+    for (auto& desc : descriptions)
+    {
+        desc.sType = VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR;
+        desc.pNext = nullptr;
+    }
+
+    result = fpEnumerate(m_physicalDevice, queueFamily, &counterCount, counters.data(), descriptions.data());
+
+    if (result != VK_SUCCESS)
+    {
+        qWarning() << "[Performance Query] Failed to enumerate counters ";
+        return;
+    }
+
+    // 选择前几个可用的计数器
+    qDebug() << "[Performance Query] Available counters:";
+    for (uint32_t i = 0; i < qMin(counterCount, 6u); ++i) {
+        m_selectedCounterIndices.push_back(i);
+        qDebug() << "  [" << i << "]" << descriptions[i].name
+            << "-" << descriptions[i].description;
+    }
+
+    if (m_selectedCounterIndices.empty()) {
+        qWarning() << "[Performance Query] No suitable counters found";
+        return;
+    }
+
+    // 创建性能查询池
+    VkQueryPoolPerformanceCreateInfoKHR perfCreateInfo{};
+    perfCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR;
+    perfCreateInfo.queueFamilyIndex = queueFamily;
+    perfCreateInfo.counterIndexCount = static_cast<uint32_t>(m_selectedCounterIndices.size());
+    perfCreateInfo.pCounterIndices = m_selectedCounterIndices.data();
+
+    VkQueryPoolCreateInfo poolCreateInfo{};
+    poolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    poolCreateInfo.pNext = &perfCreateInfo;
+    poolCreateInfo.queryType = VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR;
+    poolCreateInfo.queryCount = 1;
+
+    result = vkCreateQueryPool(m_VkDevice, &poolCreateInfo, nullptr, &m_perfQueryPool);
+    if (result != VK_SUCCESS) {
+        qWarning() << "[Performance Query] Failed to create query pool";
+        return;
+    }
+
+    // 获取性能分析锁
+    VkAcquireProfilingLockInfoKHR lockInfo{};
+    lockInfo.sType = VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR;
+    lockInfo.timeout = UINT64_MAX;
+
+    result = fpAcquire(m_VkDevice, &lockInfo);
+    if (result != VK_SUCCESS) {
+        qWarning() << "[Performance Query] Failed to acquire profiling lock";
+        vkDestroyQueryPool(m_VkDevice, m_perfQueryPool, nullptr);
+        m_perfQueryPool = VK_NULL_HANDLE;
+        return;
+    }
+
+    m_hasPerformanceQuerySupport = true;
+    qDebug() << "[Performance Query] Initialized successfully with"
+        << m_selectedCounterIndices.size() << "counters";
+}
+
+bool Device::checkPerformanceQuerySupport()
+{
+    return false;
 }
 
 VkFormat Device::findSupportedFormat(

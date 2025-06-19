@@ -43,6 +43,8 @@ public:
     Device(Device&&) = delete;
     Device& operator=(Device&&) = delete;
 
+    VkQueryPool performanceQueryPool() const { return m_perfQueryPool; }
+    bool hasPerformanceQuerySupport() const { return m_hasPerformanceQuerySupport; }
     VkCommandPool getCommandPool() { return m_commandPool; }
     VkDevice device() { return m_VkDevice; }
     VkSurfaceKHR surface() { return m_VkSurface; }
@@ -118,6 +120,9 @@ private:
     std::vector<const char*> getRequiredExtensions();
     void checkInstanceExtensionSupport(const std::vector<const char*>& required);
 
+    void setupPerformanceQuery();
+    bool checkPerformanceQuerySupport();
+
     VkInstance m_instance;
     VkDebugUtilsMessengerEXT m_debugMessenger;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
@@ -125,6 +130,15 @@ private:
     VkCommandPool m_commandPool;
 
     VmaAllocator    m_allocator;
+
+    //querypool GPU设备性能查询
+    PFN_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR fpEnumerate = nullptr;
+    PFN_vkAcquireProfilingLockKHR fpAcquire = nullptr;
+    PFN_vkReleaseProfilingLockKHR fpRelease = nullptr;
+
+    VkQueryPool m_perfQueryPool = VK_NULL_HANDLE;
+    bool m_hasPerformanceQuerySupport = false;
+    std::vector<uint32_t> m_selectedCounterIndices;
 
     VkDevice m_VkDevice;
     VkSurfaceKHR m_VkSurface;

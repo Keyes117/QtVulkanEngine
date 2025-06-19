@@ -58,7 +58,7 @@ public:
     };
 
     static constexpr uint32_t INITIAL_DRAW_COMMANDS = 200000;
-    static constexpr uint32_t VERTICES_PER_SEGMENGT = 50000000;
+    static constexpr uint32_t VERTICES_PER_SEGMENGT = 25000000;
     static constexpr uint32_t INDICES_PER_SEGMENT = 150000000;
 
     BufferPool(Device& device);

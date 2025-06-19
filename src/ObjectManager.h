@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "Object.h"
-#include "QuadTree.h"
 #include "Device.h"
 #include "Buffer.h"
 #include "FrameInfo.h"
