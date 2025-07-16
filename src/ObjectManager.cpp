@@ -101,7 +101,7 @@ ObjectManager::ObjectHandle ObjectManager::createObject(const Object::Builder& b
         m_dataPool.m_activeFlags.resize(index + 1);
     }
 
-    m_dataPool.m_chunkIds[index] = chunkId; // 稍后由SceneManager设置
+    m_dataPool.m_chunkIds[index] = chunkId;
     m_dataPool.m_objectIds[index] = static_cast<uint32_t>(id);
     m_dataPool.m_updateFlags[index] = 1; // 标记为需要更新
     m_dataPool.m_lodLevels[index] = 0;
@@ -258,7 +258,7 @@ AABB ObjectManager::getBoundingBox(ObjectHandle handle) const
     if (!isValidInternal(handle)) return AABB{ 0, 0, 0, 0 };
 
     uint32_t index = handle.index;
-    size_t offset = index * FLOAT_NUM_PER_COLOR;
+    size_t offset = index * FLOAT_NUM_PER_BOUNDINGBOX;
 
     return AABB{
        m_dataPool.m_boundingBoxes[offset],     // minX

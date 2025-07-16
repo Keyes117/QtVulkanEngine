@@ -6,6 +6,79 @@ BufferPool::BufferPool(Device& device) :
 {
 }
 
+
+
+uint32_t BufferPool::allocateChunks(const Object::Builder& builder)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto vertices = builder.vertices;
+    auto indices = builder.indices;
+    auto type = builder.type;
+
+    if (vertices.empty())
+    {
+        qWarning() << "model has no vertices";
+        return INVALID_CHUNK_ID;
+    }
+
+    auto* segment = getOrCreateSegment(type);
+    if (!segment)
+    {
+        qWarning() << "failed to get or create segment for type " << static_cast<int>(type);
+        return INVALID_CHUNK_ID;
+    }
+
+    if (segment->usedVertices + vertices.size() > segment->vertexCapacity ||
+        segment->usedIndices + indices.size() > segment->indexCapacity)
+    {
+        qDebug() << "Buffer Segment full, creating new segment for type: "
+            << static_cast<int>(type);
+
+        m_bufferSegments[type].emplace_back();
+        auto& newSegment = m_bufferSegments[type].back();
+
+        newSegment.vertexCapacity = VERTICES_PER_SEGMENGT;
+        newSegment.indexCapacity = INDICES_PER_SEGMENT;
+        newSegment.usedVertices = 0;
+        newSegment.usedIndices = 0;
+        newSegment.isActive = true;
+        newSegment.isCommandsNeedUpdate = true;
+        notifySegmentUpdate();
+        segment = &newSegment;
+    }
+
+    segment->vertices.insert(segment->vertices.end(), vertices.begin(), vertices.end());
+    segment->indices.insert(segment->indices.end(), indices.begin(), indices.end());
+
+    Chunk chunk;
+    chunk.vertexOffset = segment->usedVertices;
+    chunk.vertexCount = vertices.size();
+    chunk.indexOffset = segment->usedIndices;
+    chunk.indexCount = indices.size();
+    chunk.isLoaded = true;
+    chunk.bounds = builder.bounds;
+    chunk.segmentIndex = m_bufferSegments[type].size() - 1;
+
+    //copyDataToSegment(segment, vertices, indices, chunk.vertexOffset, chunk.indexOffset);
+
+    segment->usedVertices += vertices.size();
+    segment->usedIndices += indices.size();
+
+    uint32_t chunkId = m_nextChunkId++;
+    m_chunks[chunkId] = chunk;
+    m_chunkTypes[chunkId] = type;
+    m_chunkToSegmentIndex[chunkId] = m_bufferSegments[type].size() - 1;
+
+    segment->chunks.push_back(chunkId);
+    segment->isCommandsNeedUpdate = true;
+
+    qDebug() << "allocated geometry chunk" << chunkId
+        << " with " << vertices.size() << " vertices ";
+
+    return chunkId;
+}
+
 uint32_t BufferPool::allocateBuffer(const Object::Builder& builder)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -329,6 +402,7 @@ BufferPool::BufferSegment* BufferPool::getOrCreateSegment(ModelType type)
         segment.usedVertices = 0;
         segment.usedIndices = 0;
 
+        /*这里不再分配缓冲区，只进行初始化Segment、、*/
         segment.vertexBuffer = std::make_unique<VMABuffer>(
             m_device,
             sizeof(Model::Vertex),
@@ -346,6 +420,7 @@ BufferPool::BufferSegment* BufferPool::getOrCreateSegment(ModelType type)
         );
 
         createDrawCommandBuffers(segment);
+
     }
 
     return &segments.back();

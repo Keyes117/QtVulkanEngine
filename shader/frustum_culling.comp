@@ -97,6 +97,9 @@ bool aabbInFrustum(vec4 boundingBox)
     vec2 minXY = boundingBox.xy;  // minX, minY
     vec2 maxXY = boundingBox.zw;  // maxX, maxY
     
+    // 7.15 添加边界容差 测试
+    const float epsilon = 0.001f
+
     // 对于2D渲染，只检查左、右、上、下四个视锥面
     for (int i = 0; i < 4; i++) {
         vec4 plane = cameraBuffer.camera.frustumPlanes[i];
@@ -108,7 +111,7 @@ bool aabbInFrustum(vec4 boundingBox)
         float distance = dot(plane.xy, farPoint) + plane.w;
         
         // 如果最远点都在平面外侧，则完全被剔除
-        if (distance < 0.0) {
+        if (distance < -epsilon) {
             return false;
         }
     }

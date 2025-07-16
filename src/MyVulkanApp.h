@@ -15,7 +15,7 @@
 #include "SwapChain.h"
 #include "SceneManager.h"
 #include "qobject.h"
-
+//#include "RequestManager.h"
 
 #include <chrono>
 #include <memory>
@@ -83,6 +83,7 @@ private:
     Mouse_Movement_Controller                               m_mouseController;
     std::unique_ptr<SceneManager>                           m_sceneManager;
 
+    //std::unique_ptr<RequestManager>                         m_requestManager;
     //Scene                                                   m_scene;
 
     uint32_t                                                m_offset;

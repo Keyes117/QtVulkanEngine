@@ -9,6 +9,7 @@ RenderManager::RenderManager(MyVulkanWindow& window, Device& device, VkDescripto
     m_renderer(window, device),
     m_BufferPool(device),
     m_gpuCuller(std::make_unique<GpuFrustumCuller>(device))
+    /* m_offscreenRenderer(std::make_unique<OffscreenRenderer>(m_device))*/
 {
     m_pointRenderSystem = std::make_unique<RenderSystem>(
         device,
@@ -31,7 +32,7 @@ RenderManager::RenderManager(MyVulkanWindow& window, Device& device, VkDescripto
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
     );
 
-    m_gpuCuller->initialize(10000);
+    m_gpuCuller->initialize(2000000);
     m_BufferPool.setSegmentUpdateCallback(std::bind(&RenderManager::drawCommandBufferUpdateCallback, this));
 }
 
@@ -83,6 +84,18 @@ uint32_t RenderManager::allocateRenderBuffer(const Object::Builder& builder)
 
 }
 
+void RenderManager::renderWithOffscreen(const ObjectManager::ObjectDataPool& dataPool, FrameInfo& frameInfo)
+{
+    /*   executeGPUCulling(dataPool, frameInfo);
+
+       if (!m_offscreenRenderer->isCompositing())
+       {
+           m_offscreenRenderer->startBatchCompositing();
+       }*/
+
+
+}
+
 RenderSystem* RenderManager::getRenderSystemByType(ModelType type)
 {
     switch (type) {
@@ -113,7 +126,7 @@ void RenderManager::uploadObjectDataToGPU(const ObjectManager::ObjectDataPool& d
     auto uploadStart = std::chrono::high_resolution_clock::now();
 
     // 检查容量
-    if (dataPool.m_count > 100000) {
+    if (dataPool.m_count > 1000000) {
         m_gpuCuller->resize(static_cast<uint32_t>(dataPool.m_count * 1.3f));
     }
 

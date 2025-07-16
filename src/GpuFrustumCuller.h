@@ -40,28 +40,28 @@ struct SegmentAddressInfo
 
 struct ObjectGPUData
 {
-    float transform[16];        //4x4å˜æ¢çŸ©é˜µ
+    float transform[16];        //4x4±ä»»¾ØÕó
     float boundingBox[4];       //minx,miny,maxx,maxy
-    uint32_t chunkId;           //å¯¹åº”çš„chunkId
-    uint32_t modelType;         //ModelTypeæšä¸¾å€¼
+    uint32_t chunkId;           //¶ÔÓ¦µÄchunkId
+    uint32_t modelType;         //ModelTypeÃ¶¾ÙÖµ
 
     uint32_t indexOffset;
     uint32_t indexCount;
     uint32_t vertexOffset;
     uint32_t segmentIndex;
 
-    uint32_t visible;           //0 = ä¸å¯è§ï¼Œ 1 = å¯è§
-    uint32_t padding[1] = { 0 };           //å¡«å……
+    uint32_t visible;           //0 = ²»¿É¼û£¬ 1 = ¿É¼û
+    uint32_t padding[1] = { 0 };           //Ìî³ä
 };
 
 struct CameraGPUData
 {
-    float viewMatrix[16];       //è§†å›¾çŸ©é˜µ
-    float projMatrix[16];       //æŠ•å½±çŸ©é˜µ
-    float frustumPlanes[24];    //6ä¸ªè§†é”¥é¢ 4ä¸ªfloatä¸€ä¸ªé¢(ax+by+cz+d = 0)
-    float cameraPos[3];         //ç›¸æœºä½ç½®        
-    float nearPlane;            //è¿‘å¹³é¢
-    float farPlane;             //è¿œå¹³é¢
+    float viewMatrix[16];       //ÊÓÍ¼¾ØÕó
+    float projMatrix[16];       //Í¶Ó°¾ØÕó
+    float frustumPlanes[24];    //6¸öÊÓ×¶Ãæ 4¸öfloatÒ»¸öÃæ(ax+by+cz+d = 0)
+    float cameraPos[3];         //Ïà»úÎ»ÖÃ        
+    float nearPlane;            //½üÆ½Ãæ
+    float farPlane;             //Ô¶Æ½Ãæ
     uint32_t padding[3] = { 0 };
 };
 
@@ -129,22 +129,22 @@ private:
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkShaderModule m_computeShader = VK_NULL_HANDLE;
 
-    //TODO: åç»­æ”¹ç”¨Appä¸­çš„å…¨å±€æè¿°ç¬¦ï¼Œ è¿™é‡Œå…ˆæŠŠé€»è¾‘èµ°é€š
-    // æè¿°ç¬¦ 
+    //TODO: ºóĞø¸ÄÓÃAppÖĞµÄÈ«¾ÖÃèÊö·û£¬ ÕâÀïÏÈ°ÑÂß¼­×ßÍ¨
+    // ÃèÊö·û 
     std::unique_ptr<DescriptorSetLayout> m_descriptorSetLayout;
     std::unique_ptr<DescriptorPool> m_descriptorPool;
     VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
 
-    // ç¼“å†²åŒº
-    std::unique_ptr<VMABuffer> m_objectBuffer;       // å¯¹è±¡æ•°æ®
-    std::unique_ptr<VMABuffer> m_cameraBuffer;       // ç›¸æœºæ•°æ®
+    // »º³åÇø
+    std::unique_ptr<VMABuffer> m_objectBuffer;       // ¶ÔÏóÊı¾İ
+    std::unique_ptr<VMABuffer> m_cameraBuffer;       // Ïà»úÊı¾İ
     std::unique_ptr<VMABuffer> m_segmentAddressBuffer;
 
 #ifdef DEBUG_BUFFER_ENABLED
     std::unique_ptr<VMABuffer> m_debugBuffer;
 
 #endif
-    // çŠ¶æ€
+    // ×´Ì¬
     uint32_t m_maxObjects = 0;
     CullingStats m_stats;
 
@@ -152,7 +152,7 @@ private:
     std::vector<SegmentAddressInfo>     m_segmentAddresses;
 
     static constexpr uint32_t MAX_SEGMENTS = 64;
-    // å·¥ä½œç»„å¤§å°(æ ¹æ®GPUä¼˜åŒ–)
+    // ¹¤×÷×é´óĞ¡(¸ù¾İGPUÓÅ»¯)
     static constexpr uint32_t WORKGROUP_SIZE = 64;
 };
 

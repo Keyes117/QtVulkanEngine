@@ -11,7 +11,7 @@
 #include "Object.h"
 #include "VMABuffer.h"
 
-#define INVALID_CHUNK_ID -1
+#define INVALID_CHUNK_ID 0xFFFFFFFF
 
 class BufferPool
 {
@@ -30,6 +30,9 @@ public:
 
     struct BufferSegment
     {
+        std::vector<Model::Vertex> vertices;
+        std::vector<uint32_t>      indices;
+
         std::unique_ptr<VMABuffer> vertexBuffer;
         std::unique_ptr<VMABuffer> indexBuffer;
         std::unique_ptr<VMABuffer> drawCommandBuffer;
@@ -57,13 +60,15 @@ public:
         VkBuffer getDrawCountBuffer() const { return drawCountBuffer ? drawCountBuffer->getBuffer() : VK_NULL_HANDLE; }
     };
 
-    static constexpr uint32_t INITIAL_DRAW_COMMANDS = 200000;
+    static constexpr uint32_t INITIAL_DRAW_COMMANDS = 2000000;
     static constexpr uint32_t VERTICES_PER_SEGMENGT = 25000000;
     static constexpr uint32_t INDICES_PER_SEGMENT = 150000000;
 
     BufferPool(Device& device);
     ~BufferPool() = default;
 
+
+    uint32_t allocateChunks(const Object::Builder& builder);
     uint32_t allocateBuffer(const Object::Builder& builder);
     std::vector<uint32_t> getVisibleChunks(const Camera& camera, ModelType type);
 
@@ -101,6 +106,8 @@ private:
     mutable std::mutex                                          m_mutex;
 
     std::unordered_map<ModelType, std::vector<BufferSegment>>   m_bufferSegments;
+
+
 
     std::unordered_map<uint32_t, Chunk>                         m_chunks;
     std::unordered_map<uint32_t, ModelType>                     m_chunkTypes;

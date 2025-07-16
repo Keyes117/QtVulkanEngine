@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cmath>
-#include <qgenericmatrix.h>
 
 #include <qmatrix4x4.h>
 #include <qvector2d.h>
@@ -177,3 +176,83 @@ struct InstanceData
 constexpr int CONTOUR_SEGMENT_THRESHOLD = 200;  // 超过200个点就分段
 constexpr int CONTOUR_SEGMENT_SIZE = 150;       // 每段150个点
 constexpr int CONTOUR_OVERLAP_POINTS = 2;       // 段间重叠2个点保证连续性
+
+/* ===========================GPU-CPU通信结构============================ */
+
+// 常量定义
+constexpr uint32_t MAX_GPU_REQUESTS = 256;
+constexpr uint32_t MAX_CPU_RESPONSES = 256;
+
+// 枚举定义
+enum class RequestType : uint32_t
+{
+    REQUEST_LOAD_GEOMETRY = 0,
+    REQUEST_UNLOAD_GEOMETRY = 1,
+    REQUEST_CHANGE_LOD = 2,
+    REQUEST_UPDATE_PRIORITY = 3
+};
+
+enum class RequestPriority : uint32_t
+{
+    URGENT = 0,        // 紧急：视野中心
+    HIGH = 1,          // 高：视野边缘
+    NORMAL = 2,        // 普通：预加载区域
+    BACKGROUND = 3     // 后台：远距离区域
+};
+
+enum class ResponseStatus : uint32_t
+{
+    PENDING = 0,       // 处理中
+    SUCCESS = 1,       // 成功
+    FAILED = 2,        // 失败
+    TIMEOUT = 3        // 超时
+};
+
+// GPU请求结构（32字节对齐）
+struct GPURequest
+{
+    uint32_t type;           // RequestType枚举值
+    uint32_t objectID;       // 对象ID
+    uint32_t regionHash;     // 区域哈希
+    uint32_t priority;       // RequestPriority枚举值
+    uint32_t frameID;        // 帧ID
+    uint32_t checkSum;       // 校验和
+    uint32_t timestamp;      // 时间戳
+    uint32_t padding;        // 对齐到32字节
+
+    void calculateCheckSum()
+    {
+        checkSum = type + objectID + frameID;
+    }
+
+    bool isValid() const
+    {
+        return checkSum == (type + objectID + frameID);
+    }
+};
+
+// CPU响应结构（32字节对齐）
+struct CPUResponse
+{
+    uint32_t requestID;      // 请求ID
+    uint32_t status;         // ResponseStatus枚举值
+    uint32_t dataOffset;     // 数据偏移
+    uint32_t dataSize;       // 数据大小
+    uint32_t timestamp;      // 时间戳
+    uint32_t frameCompleted; // 完成帧号
+    uint32_t padding[2];     // 对齐到32字节
+};
+
+// 统一计数器结构（16字节对齐）
+struct RequestCounters
+{
+    uint32_t requestCount;   // GPU写入的请求数量
+    uint32_t responseCount;  // CPU写入的响应数量
+    uint32_t frameNumber;    // 当前帧号
+    uint32_t padding;        // 对齐
+};
+
+// 缓冲区大小常量
+constexpr uint32_t REQUEST_BUFFER_SIZE = sizeof(GPURequest) * MAX_GPU_REQUESTS;
+constexpr uint32_t RESPONSE_BUFFER_SIZE = sizeof(CPUResponse) * MAX_CPU_RESPONSES;
+constexpr uint32_t COUNTER_BUFFER_SIZE = sizeof(RequestCounters);

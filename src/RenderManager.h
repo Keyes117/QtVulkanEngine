@@ -11,6 +11,8 @@
 #include "FrameInfo.h"
 #include "GpuFrustumCuller.h"
 
+//#include "OffscreenRenderer.h"
+
 class RenderManager
 {
 public:
@@ -32,6 +34,13 @@ public:
     uint32_t allocateRenderBuffer(const Object::Builder& builder);
     const BufferPool::Chunk* getChunk(uint32_t chunkId) { return m_BufferPool.getChunk(chunkId); }
 
+    //=================¿Î∆¡‰÷»æ π‹¿Ì =========================
+    void enableOffscreenRendering(bool enable) {
+        m_offscreenEnabled = enable;
+        qDebug() << "[RenderManager] Offscreen rendering" << (enable ? "enabled " : "disabled");
+    }
+    void renderWithOffscreen(const ObjectManager::ObjectDataPool& dataPool, FrameInfo& frameInfo);
+
     Renderer& getRenderer() { return m_renderer; }
     BufferPool& getBufferPool() { return m_BufferPool; }
 
@@ -51,6 +60,9 @@ private:
 
 private:
     Device& m_device;
+
+    bool                                            m_offscreenEnabled{ false };
+    //std::unique_ptr<OffscreenRenderer>              m_offscreenRenderer;
 
     Renderer                                        m_renderer;
     BufferPool                                      m_BufferPool;

@@ -80,7 +80,8 @@
     <PreBuildEvent>
       <Command>glslc $(SolutionDir)shader\simple_shader.vert  -o  $(SolutionDir)bin\Debug\simple_shader.vert.spv
 glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\Debug\simple_shader.frag.spv
-glslc $(SolutionDir)shader\frustum_culling.comp  -o  $(SolutionDir)bin\Debug\frustum_culling.comp.spv</Command>
+glslc $(SolutionDir)shader\frustum_culling.comp  -o  $(SolutionDir)bin\Debug\frustum_culling.comp.spv
+glslc $(SolutionDir)shader\test_request.comp  -o  $(SolutionDir)bin\Debug\test_request.comp.spv</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -179,6 +180,7 @@ glslc $(SolutionDir)shader\simple_shader.frag  -o  $(SolutionDir)bin\$(Configura
     <None Include="..\shader\frustum_culling.comp" />
     <None Include="..\shader\simple_shader.frag" />
     <None Include="..\shader\simple_shader.vert" />
+    <None Include="..\shader\test_request.comp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

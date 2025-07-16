@@ -179,6 +179,9 @@
     <None Include="..\shader\frustum_culling.comp">
       <Filter>shader</Filter>
     </None>
+    <None Include="..\shader\test_request.comp">
+      <Filter>shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="MyVulkanWidget.ui">

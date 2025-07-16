@@ -1,0 +1,97 @@
+#version 450
+
+// Define workgroup size
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+// Push constants
+layout(push_constant) uniform PushConstants {
+    uint totalObjects;
+} push;
+
+// GPU request structure
+struct GPURequest {
+    uint type;
+    uint objectID;
+    uint regionHash;
+    uint priority;
+    uint frameID;
+    uint checkSum;
+    uint timestamp;
+    uint padding;
+};
+
+struct CPUResponse {
+    uint requestID;
+    uint status;
+    uint dataOffset;
+    uint dataSize;
+    uint timestamp;
+    uint frameCompleted;
+    uint padding[2];
+};
+
+struct RequestCounters {
+    uint requestCount;
+    uint responseCount;
+    uint frameNumber;
+    uint padding;
+};
+
+// Buffer bindings (set = 1)
+layout(set = 1, binding = 0) buffer RequestBuffer {
+    GPURequest requests[];
+} requestBuffer;
+
+layout(set = 1, binding = 1) readonly buffer ResponseBuffer {
+    CPUResponse responses[];
+} responseBuffer;
+
+layout(set = 1, binding = 2) coherent buffer CounterBuffer {
+    RequestCounters counters;
+} counterBuffer;
+
+// Calculate checksum
+uint calculateChecksum(GPURequest request) {
+    return request.type + 
+           request.objectID + 
+           request.frameID + 
+           request.regionHash + 
+           request.priority;
+}
+
+void main() {
+    // Get global invocation ID
+    uint index = gl_GlobalInvocationID.x;
+    
+    // Boundary check using push constant
+    if (index >= push.totalObjects) {
+        return;
+    }
+    
+    // Test: generate a request for every 10th object
+    if (index % 10 == 0) {
+        // Atomic operation to get request index
+        uint requestIndex = atomicAdd(counterBuffer.counters.requestCount, 1);
+        
+        // Check if we haven't exceeded maximum requests
+        if (requestIndex < 256) { // MAX_GPU_REQUESTS
+            // Fill request data
+            GPURequest request;
+            request.type = 2;  // REQUEST_CHANGE_LOD
+            request.objectID = index;
+            request.regionHash = index / 100;
+            request.priority = 2;  // NORMAL
+            request.frameID = counterBuffer.counters.frameNumber;
+            request.timestamp = index;
+            
+            // Calculate and set checksum
+            request.checkSum = calculateChecksum(request);
+            
+            // Write to request buffer
+            requestBuffer.requests[requestIndex] = request;
+            
+            // Memory barrier to ensure visibility
+            memoryBarrier();
+        }
+    }
+}

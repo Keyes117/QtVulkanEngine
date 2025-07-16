@@ -149,7 +149,7 @@ public:
     uint8_t getLODLevel(ObjectHandle handle) const;
     uint32_t getObjectId(ObjectHandle handle) const;
 
-    // 批量操作 - SOA的优势
+    // 批量操作
     void updateTransforms(const std::vector<ObjectHandle>& handles, const std::vector<QMatrix4x4>& transforms);
     void updateColors(const std::vector<ObjectHandle>& handles, const std::vector<QVector3D>& colors);
     void markUpdated(ObjectHandle handle, uint8_t flags = 1);

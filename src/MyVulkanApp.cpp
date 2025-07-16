@@ -1,5 +1,6 @@
 #include "MyVulkanApp.h"
 
+
 #include <array>
 #include <QApplication>
 #include <qtimer.h>
@@ -36,6 +37,23 @@ MyVulkanApp::MyVulkanApp() :
     m_mouseController(m_cameraObject, m_camera),
     m_device(m_window)
 {
+
+    //// 创建RequestManager
+    //m_requestManager = std::make_unique<RequestManager>(m_device);
+    //m_requestManager->initialize();
+
+    //// 注册测试处理器
+    //m_requestManager->registerHandler(RequestType::REQUEST_CHANGE_LOD,
+    //    [](const GPURequest& request) {
+    //        qDebug() << "收到LOD变更请求 - 对象ID:" << request.objectID
+    //            << " 区域:" << request.regionHash;
+    //    });
+
+    //m_requestManager->registerHandler(RequestType::REQUEST_LOAD_GEOMETRY,
+    //    [](const GPURequest& request) {
+    //        qDebug() << "收到几何加载请求 - 对象ID:" << request.objectID;
+    //    });
+
 
     createQueryPools();
 
@@ -113,7 +131,7 @@ void MyVulkanApp::run()
             Renderer& renderer = m_sceneManager->getRenderManager().getRenderer();
 
             float aspect = renderer.getAspectRatio();;
-            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 10000.f);
+            m_camera.setPrespectiveProjection(degressToRadians(50.f), aspect, 0.1f, 1000.f);
 
             //TODO:检查这里的帧时间的问题，好像MAX_FRAME_TIME 会失效？
             auto newTime = std::chrono::high_resolution_clock::now();
@@ -168,6 +186,8 @@ void MyVulkanApp::run()
                     m_timestampQueryPool, 0);
                 //render
                 m_sceneManager->culling(frameInfo);
+
+                //m_requestManager->processFrame(frameInfo);
 
                 // 同时开启管线统计
                 vkCmdBeginQuery(commandBuffer, m_statsQueryPool, 0, 0);
@@ -274,7 +294,7 @@ void MyVulkanApp::loadShpObjects(const std::string path)
         count++;
         OGRFeature::DestroyFeature(feature);
 #ifdef LIMIT
-        if (count == 300000)
+        if (count == 400000)
             break;
 #endif
     }
